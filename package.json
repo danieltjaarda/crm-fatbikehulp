@@ -1,0 +1,8 @@
+{
+  "name": "fatbikehulp-crm",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Bestellingen van fatbikehulp.nl bekijken, bewerken en klanten mailen",
+  "scripts": { "test": "node --test tests/*.test.js" },
+  "engines": { "node": "22.x" }
+}

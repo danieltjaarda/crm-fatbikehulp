@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Fatbikehulp CRM</title>
+<style>
+:root{--bg:#f4f5f7;--kaart:#fff;--tekst:#1c2430;--zacht:#667085;--lijn:#e3e6ea;--merk:#234C6A;--merk2:#1a3a52;--groen:#17803d;--groenbg:#e6f4ea;--oranje:#b25e09;--oranjebg:#fdf0dc;--paars:#5b3fc4;--paarsbg:#ece8fb;--grijsbg:#eceef1;--rood:#b42318;--roodbg:#fde8e6}
+@media (prefers-color-scheme:dark){:root{--bg:#12161c;--kaart:#1b2129;--tekst:#e8ebef;--zacht:#98a2b3;--lijn:#2c343f;--merk:#5fa3d0;--merk2:#7db8df;--groen:#5fd08a;--groenbg:#173224;--oranje:#f0b25c;--oranjebg:#3a2a12;--paars:#b3a2f5;--paarsbg:#2a2447;--grijsbg:#262d37;--rood:#ff8b80;--roodbg:#3d1b18}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tekst);font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}
+button,input,select,textarea{font:inherit;color:inherit}
+.kop{display:flex;align-items:center;gap:12px;padding:14px 16px;background:var(--kaart);border-bottom:1px solid var(--lijn);position:sticky;top:0;z-index:5}
+.kop h1{font-size:17px;margin:0;flex:1}
+.wrap{max-width:1100px;margin:0 auto;padding:16px}
+.knop{background:var(--merk);color:#fff;border:0;border-radius:8px;padding:9px 14px;cursor:pointer;font-weight:600}
+@media (prefers-color-scheme:dark){.knop{color:#0d1117}}
+.knop:disabled{opacity:.5;cursor:default}
+.knop.licht{background:transparent;color:var(--tekst);border:1px solid var(--lijn);font-weight:500}
+.balk{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.balk input{flex:1;min-width:180px}
+input,select,textarea{background:var(--kaart);border:1px solid var(--lijn);border-radius:8px;padding:9px 10px;width:100%}
+textarea{min-height:90px;resize:vertical}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.tab{background:var(--kaart);border:1px solid var(--lijn);border-radius:999px;padding:6px 12px;cursor:pointer;font-size:14px}
+.tab.aan{background:var(--merk);border-color:var(--merk);color:#fff}
+@media (prefers-color-scheme:dark){.tab.aan{color:#0d1117}}
+.tab b{font-weight:600;opacity:.75;margin-left:4px}
+.lijst{background:var(--kaart);border:1px solid var(--lijn);border-radius:12px;overflow:hidden}
+.rij{display:grid;grid-template-columns:96px 1fr 110px 90px;gap:10px;padding:12px 14px;border-bottom:1px solid var(--lijn);cursor:pointer;align-items:center}
+.rij:last-child{border-bottom:0}
+.rij:hover{background:var(--grijsbg)}
+.rij .klein{color:var(--zacht);font-size:13px}
+.rij .naam{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rij .wat{color:var(--zacht);font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rij .bedrag{text-align:right;font-variant-numeric:tabular-nums;font-weight:600}
+.pil{display:inline-block;border-radius:999px;padding:2px 9px;font-size:12.5px;font-weight:600;white-space:nowrap}
+.p-nieuw{background:var(--oranjebg);color:var(--oranje)}.p-verwerkt{background:var(--paarsbg);color:var(--paars)}
+.p-verzonden,.p-afgeleverd{background:var(--groenbg);color:var(--groen)}.p-geannuleerd{background:var(--roodbg);color:var(--rood)}
+.p-open{background:var(--grijsbg);color:var(--zacht)}
+.leeg{padding:36px 16px;text-align:center;color:var(--zacht)}
+.melding{background:var(--oranjebg);color:var(--oranje);border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:14px}
+.fout{background:var(--roodbg);color:var(--rood)}
+.scherm{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;z-index:10;justify-content:flex-end}
+.scherm.open{display:flex}
+.paneel{background:var(--bg);width:min(560px,100%);height:100%;overflow:auto;padding:16px}
+.paneel h2{font-size:18px;margin:0}
+.blok{background:var(--kaart);border:1px solid var(--lijn);border-radius:12px;padding:14px;margin-top:12px}
+.blok h3{font-size:13px;text-transform:uppercase;letter-spacing:.04em;color:var(--zacht);margin:0 0 10px}
+.veld{margin-bottom:10px}.veld label{display:block;font-size:13px;color:var(--zacht);margin-bottom:4px}
+.twee{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.drie{display:grid;grid-template-columns:2fr 1fr;gap:10px}
+.item{display:flex;justify-content:space-between;gap:10px;padding:5px 0;font-size:14px}
+.item span:last-child{font-variant-numeric:tabular-nums;white-space:nowrap}
+.acties{display:flex;gap:8px;flex-wrap:wrap}
+.log{font-size:13px;color:var(--zacht);margin:8px 0 0;padding:0;list-style:none}
+.login{max-width:340px;margin:14vh auto 0;background:var(--kaart);border:1px solid var(--lijn);border-radius:14px;padding:22px}
+.login h1{font-size:19px;margin:0 0 14px}
+.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--tekst);color:var(--bg);padding:10px 16px;border-radius:10px;z-index:30;display:none;max-width:90vw}
+@media (max-width:640px){.rij{grid-template-columns:1fr auto;gap:4px 10px}.rij .datum{order:3}.rij .status{order:4;text-align:right}.twee{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div class="scherm" id="scherm"><div class="paneel" id="paneel"></div></div>
+<div class="toast" id="toast"></div>
+<script>
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const euro = (n) => "€ " + (Number(n) || 0).toFixed(2).replace(".", ",");
+const datum = (s) => { const d = new Date(s); return isNaN(d) ? "" : d.toLocaleDateString("nl-NL", { day: "numeric", month: "short", year: "2-digit" }); };
+const tijd = (s) => { const d = new Date(s); return isNaN(d) ? "" : d.toLocaleString("nl-NL", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }); };
+const STATUS = { nieuw: "Te verzenden", verwerkt: "Verwerkt", verzonden: "Verzonden", afgeleverd: "Afgeleverd", geannuleerd: "Geannuleerd" };
+const MAILNAAM = { bevestiging: "Bevestiging", verzonden: "Verzendbericht", vrij: "Eigen bericht" };
+let staat = { orders: [], mailAan: false, afzender: "", opslagAan: true, filter: "nieuw", zoek: "", open: null, fout: "" };
+
+async function api(pad, opties) {
+  const r = await fetch(pad, { credentials: "same-origin", headers: { "Content-Type": "application/json" }, ...opties, body: opties && opties.body ? JSON.stringify(opties.body) : undefined });
+  const j = await r.json().catch(() => ({}));
+  if (r.status === 401 && pad !== "/api/login") { toonLogin(); throw new Error("Niet ingelogd"); }
+  if (!r.ok) throw new Error(j.fout || "Er ging iets mis");
+  return j;
+}
+function toast(t) { const el = $("#toast"); el.textContent = t; el.style.display = "block"; clearTimeout(toast.t); toast.t = setTimeout(() => (el.style.display = "none"), 3200); }
+
+// De status die de CRM toont: wat jij hebt gezet, anders afgeleid van de site.
+function statusVan(o) {
+  if (o.verzendstatus) return o.verzendstatus;
+  if (!o.betaald) return "open";
+  const f = o.fulfillmentStatus;
+  return f === "verzonden" || f === "afgeleverd" || f === "verwerkt" ? f : "nieuw";
+}
+function pil(o) { const s = statusVan(o); return '<span class="pil p-' + s + '">' + (s === "open" ? "Niet betaald" : STATUS[s]) + "</span>"; }
+
+function toonLogin(fout) {
+  $("#scherm").classList.remove("open");
+  $("#app").innerHTML = '<form class="login" id="lf"><h1>Fatbikehulp CRM</h1><div class="veld"><label for="ww">Wachtwoord</label><input id="ww" type="password" autocomplete="current-password" autofocus></div>' +
+    (fout ? '<div class="melding fout">' + esc(fout) + "</div>" : "") + '<button class="knop" style="width:100%">Inloggen</button></form>';
+  $("#lf").onsubmit = async (e) => {
+    e.preventDefault();
+    try { await api("/api/login", { method: "POST", body: { wachtwoord: $("#ww").value } }); laad(); }
+    catch (err) { toonLogin(err.message); }
+  };
+}
+
+async function laad() {
+  try {
+    const j = await api("/api/orders");
+    Object.assign(staat, j, { fout: "" });
+  } catch (e) { if (e.message === "Niet ingelogd") return; staat.fout = e.message; }
+  teken();
+}
+
+function gefilterd() {
+  const z = staat.zoek.trim().toLowerCase();
+  return staat.orders.filter((o) => {
+    if (o.verborgen && staat.filter !== "alles") return false;
+    const s = statusVan(o);
+    if (staat.filter === "nieuw" && !(s === "nieuw" || s === "verwerkt")) return false;
+    if (staat.filter === "verzonden" && !(s === "verzonden" || s === "afgeleverd")) return false;
+    if (staat.filter === "open" && s !== "open") return false;
+    if (staat.filter === "betaald" && !o.betaald) return false;
+    if (!z) return true;
+    const a = o.shippingAddress || {};
+    return [o.id, o.customerName, o.customerEmail, o.customerPhone, a.postalCode, a.city, o.trackTrace, ...(o.items || []).map((i) => i.name)].join(" ").toLowerCase().includes(z);
+  });
+}
+function tel(f) { const oud = staat.filter, z = staat.zoek; staat.filter = f; staat.zoek = ""; const n = gefilterd().length; staat.filter = oud; staat.zoek = z; return n; }
+
+function teken() {
+  const tabs = [["nieuw", "Te verzenden"], ["verzonden", "Verzonden"], ["betaald", "Alle betaalde"], ["open", "Niet betaald"], ["alles", "Alles"]];
+  const lijst = gefilterd();
+  $("#app").innerHTML =
+    '<div class="kop"><h1>Fatbikehulp CRM</h1><button class="knop licht" id="ververs">Verversen</button><button class="knop licht" id="uit">Uitloggen</button></div><div class="wrap">' +
+    (staat.fout ? '<div class="melding fout">' + esc(staat.fout) + "</div>" : "") +
+    (!staat.opslagAan ? '<div class="melding fout">De opslag is nog niet gekoppeld. Je kunt bestellingen bekijken, maar nog niet bewerken.</div>' : "") +
+    (!staat.mailAan ? '<div class="melding">Mailen staat nog uit. Bestellingen bewerken werkt wel.</div>' : "") +
+    '<div class="balk"><input id="zoek" type="search" placeholder="Zoek op naam, e-mail, ordernummer, postcode of product" value="' + esc(staat.zoek) + '"></div>' +
+    '<div class="tabs">' + tabs.map(([k, n]) => '<button class="tab' + (staat.filter === k ? " aan" : "") + '" data-f="' + k + '">' + n + "<b>" + tel(k) + "</b></button>").join("") + "</div>" +
+    '<div class="lijst" id="lijst">' + (lijst.length ? lijst.map((o) =>
+      '<div class="rij" data-id="' + esc(o.id) + '"><div class="klein datum">' + esc(datum(o.createdAt)) + '</div><div style="min-width:0"><div class="naam">' + esc(o.customerName || "Onbekend") +
+      '</div><div class="wat">' + esc((o.items || []).map((i) => i.quantity + "× " + i.name).join(", ")) + '</div></div><div class="status">' + pil(o) + '</div><div class="bedrag">' + esc(euro(o.amount)) + "</div></div>").join("")
+      : '<div class="leeg">' + (staat.orders.length ? "Geen bestellingen in deze weergave." : "Nog geen bestellingen.") + "</div>") + "</div></div>";
+  $("#ververs").onclick = () => laad().then(() => toast("Bijgewerkt"));
+  $("#uit").onclick = async () => { await api("/api/login", { method: "DELETE" }); toonLogin(); };
+  $("#zoek").oninput = (e) => { staat.zoek = e.target.value; const p = e.target.selectionStart; teken(); const z = $("#zoek"); z.focus(); z.setSelectionRange(p, p); };
+  document.querySelectorAll(".tab").forEach((b) => (b.onclick = () => { staat.filter = b.dataset.f; teken(); }));
+  document.querySelectorAll(".rij").forEach((r) => (r.onclick = () => openOrder(r.dataset.id)));
+}
+
+function openOrder(id) { staat.open = id; tekenPaneel(); $("#scherm").classList.add("open"); }
+function sluit() { staat.open = null; $("#scherm").classList.remove("open"); }
+$("#scherm").onclick = (e) => { if (e.target.id === "scherm") sluit(); };
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") sluit(); });
+
+function tekenPaneel() {
+  const o = staat.orders.find((x) => x.id === staat.open);
+  if (!o) return sluit();
+  const a = o.shippingAddress || {};
+  const s = statusVan(o);
+  const veld = (id, label, w, type) => '<div class="veld"><label for="' + id + '">' + label + '</label><input id="' + id + '" type="' + (type || "text") + '" value="' + esc(w) + '"></div>';
+  const uit = !staat.mailAan ? " disabled" : "";
+  $("#paneel").innerHTML =
+    '<div style="display:flex;align-items:center;gap:10px"><div style="flex:1"><h2>' + esc(o.id) + '</h2><div style="color:var(--zacht);font-size:13px">' + esc(tijd(o.createdAt)) + " · " + (o.betaald ? "betaald" : "niet betaald") + " · " + esc(euro(o.amount)) + '</div></div><button class="knop licht" id="dicht">Sluiten</button></div>' +
+    '<div class="blok"><h3>Bestelling</h3>' + (o.items || []).map((i) => '<div class="item"><span>' + esc(i.quantity) + "× " + esc(i.name) + "</span><span>" + esc(euro((Number(i.price) || 0) * (Number(i.quantity) || 1))) + "</span></div>").join("") +
+    (o.shippingCost ? '<div class="item"><span>Verzending' + (o.deliveryType ? " (" + esc(o.deliveryType) + ")" : "") + "</span><span>" + esc(euro(o.shippingCost)) + "</span></div>" : "") +
+    (o.parcelShop && o.parcelShop.name ? '<div class="item"><span>Afhaalpunt: ' + esc(o.parcelShop.name) + "</span><span></span></div>" : "") + "</div>" +
+    '<div class="blok"><h3>Afhandeling</h3><div class="twee"><div class="veld"><label for="f-status">Status</label><select id="f-status">' +
+    (s === "open" ? '<option value="" selected>Niet betaald</option>' : "") + Object.entries(STATUS).map(([k, n]) => '<option value="' + k + '"' + (k === s ? " selected" : "") + ">" + n + "</option>").join("") + "</select></div>" +
+    veld("f-tt", "Volgcode of volglink", o.trackTrace || "") + '</div><div class="veld"><label for="f-not">Notitie (alleen voor jou)</label><textarea id="f-not">' + esc(o.notitie || "") + "</textarea></div></div>" +
+    '<div class="blok"><h3>Klant</h3>' + veld("f-naam", "Naam", o.customerName || "") + '<div class="twee">' + veld("f-mail", "E-mail", o.customerEmail || "", "email") + veld("f-tel", "Telefoon", o.customerPhone || "", "tel") + "</div>" +
+    '<div class="drie">' + veld("f-str", "Straat", a.street || a.streetAndNumber || "") + veld("f-nr", "Huisnummer", a.houseNumber || "") + '</div><div class="twee">' + veld("f-pc", "Postcode", a.postalCode || "") + veld("f-plaats", "Plaats", a.city || "") + "</div></div>" +
+    '<div class="blok"><div class="acties"><button class="knop" id="opslaan">Opslaan</button><button class="knop licht" id="verberg">' + (o.verborgen ? "Terugzetten in de lijst" : "Verbergen uit de lijst") + "</button></div></div>" +
+    '<div class="blok"><h3>Mail naar klant</h3><div class="acties"><button class="knop licht" data-mail="bevestiging"' + uit + '>Bevestiging sturen</button><button class="knop licht" data-mail="verzonden"' + uit + '>Verzendbericht sturen</button></div>' +
+    '<div class="veld" style="margin-top:12px"><label for="m-ond">Eigen bericht: onderwerp</label><input id="m-ond"></div><div class="veld"><label for="m-tekst">Bericht</label><textarea id="m-tekst" placeholder="De aanhef en afsluiting schrijf je zelf. De bestelling staat er automatisch onder."></textarea></div>' +
+    '<button class="knop licht" data-mail="vrij"' + uit + ">Eigen bericht sturen</button>" +
+    (o.mails && o.mails.length ? '<ul class="log">' + o.mails.slice().reverse().map((m) => "<li>" + esc(tijd(m.tijd)) + " · " + esc(MAILNAAM[m.soort] || m.soort) + (m.automatisch ? " (automatisch)" : "") + " naar " + esc(m.aan) + "</li>").join("") + "</ul>" : '<p class="log">Nog geen mail verstuurd vanuit de CRM.</p>') + "</div>";
+  $("#dicht").onclick = sluit;
+  $("#opslaan").onclick = () => opslaan();
+  $("#verberg").onclick = () => stuur({ verborgen: !o.verborgen }, o.verborgen ? "Teruggezet" : "Verborgen");
+  document.querySelectorAll("[data-mail]").forEach((b) => (b.onclick = () => mail(b.dataset.mail, b)));
+}
+
+function formulier() {
+  const w = { trackTrace: $("#f-tt").value, notitie: $("#f-not").value, customerName: $("#f-naam").value, customerEmail: $("#f-mail").value, customerPhone: $("#f-tel").value,
+    shippingAddress: { street: $("#f-str").value, houseNumber: $("#f-nr").value, postalCode: $("#f-pc").value, city: $("#f-plaats").value } };
+  if ($("#f-status").value) w.verzendstatus = $("#f-status").value;
+  return w;
+}
+async function stuur(wijzigingen, klaar) {
+  try {
+    const j = await api("/api/orders", { method: "PUT", body: { id: staat.open, wijzigingen } });
+    staat.orders = staat.orders.map((x) => (x.id === j.order.id ? j.order : x));
+    teken(); tekenPaneel(); toast(klaar || "Opgeslagen");
+    return true;
+  } catch (e) { toast(e.message); return false; }
+}
+function opslaan() { return stuur(formulier(), "Opgeslagen"); }
+
+async function mail(soort, knop) {
+  const o = staat.orders.find((x) => x.id === staat.open);
+  // Eerst opslaan, zodat een net ingevulde volgcode of e-mailadres in de mail zit.
+  if (!(await opslaan())) return;
+  const body = { id: o.id, soort, onderwerp: $("#m-ond") ? $("#m-ond").value : "", tekst: $("#m-tekst") ? $("#m-tekst").value : "" };
+  if (soort === "verzonden" && !$("#f-tt").value.trim() && !confirm("Er is geen volgcode ingevuld. Toch het verzendbericht sturen?")) return;
+  if (!confirm(MAILNAAM[soort] + " sturen naar " + $("#f-mail").value + "?")) return;
+  try {
+    const j = await api("/api/mail", { method: "POST", body });
+    staat.orders = staat.orders.map((x) => (x.id === j.order.id ? j.order : x));
+    tekenPaneel(); toast("Mail verstuurd");
+  } catch (e) { toast(e.message); }
+}
+
+api("/api/login").then((j) => (j.ingelogd ? laad() : toonLogin())).catch(() => toonLogin());
+</script>
+</body>
+</html>
