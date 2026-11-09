@@ -10,7 +10,8 @@
 //   CRM_GEHEIM        sleutel waarmee de inlogcookie is ondertekend
 //   KV_REST_API_URL / KV_REST_API_TOKEN   eigen opslag (Upstash Redis)
 //   MAIL_VAN          afzender, standaard "Fatbikehulp <info@fatbikehulp.nl>"
-//   MAIL_WACHTWOORD   wachtwoord van die alias in Forward Email; zonder staat mailen uit
+//   MAIL_WACHTWOORD   verzamelwachtwoord (catch-all) van het domein in Forward Email; zonder staat mailen uit
+//   MAIL_GEBRUIKER    optioneel: andere inlognaam dan *@domein, bv. een alias met eigen wachtwoord
 //   MAIL_MELDINGEN    optioneel: adres dat een melding krijgt bij een nieuwe bestelling
 //   CRON_SECRET       door Vercel meegestuurd bij de automatische controle
 
@@ -185,7 +186,8 @@ function mailAan() { return !!process.env.MAIL_WACHTWOORD && geldigAdres(kaalAdr
 async function verstuur({ aan, onderwerp, tekst, html }) {
   if (!mailAan()) throw new Error("Mailen staat nog uit: het wachtwoord van de mailalias ontbreekt");
   if (!geldigAdres(aan)) throw new Error("Het e-mailadres van de klant klopt niet");
-  const gebruiker = kaalAdres(mailVan());
+  // Inloggen bij Forward Email: standaard met het verzamelwachtwoord van het domein (gebruiker *@domein).
+  const gebruiker = process.env.MAIL_GEBRUIKER || "*@" + kaalAdres(mailVan()).split("@")[1];
   const r = await fetch(MAIL_API, {
     method: "POST",
     headers: {
