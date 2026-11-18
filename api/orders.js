@@ -1,12 +1,12 @@
-const { bewaak, alleOrders, eenOrder, pasAan, mailAan, mailVan, kaalAdres, opslagAan } = require("./_lib");
+const { bewaak, alleOrdersMetMeldingen, eenOrder, pasAan, winkelInfo, opslagAan } = require("./_lib");
 
 module.exports = async (req, res) => {
   if (!bewaak(req, res)) return;
   res.setHeader("Cache-Control", "no-store");
   try {
     if (req.method === "GET") {
-      const orders = await alleOrders();
-      return res.status(200).json({ orders, mailAan: mailAan(), afzender: kaalAdres(mailVan()), opslagAan: opslagAan() });
+      const { orders, meldingen } = await alleOrdersMetMeldingen();
+      return res.status(200).json({ orders, meldingen, winkels: winkelInfo(), opslagAan: opslagAan() });
     }
     if (req.method === "PUT") {
       const { id, wijzigingen } = req.body || {};

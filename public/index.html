@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex,nofollow">
-<title>Fatbikehulp CRM</title>
+<title>CRM Fatbikehulp, Deskna &amp; Fatbiketeile</title>
 <style>
 :root{--bg:#f4f5f7;--kaart:#fff;--tekst:#1c2430;--zacht:#667085;--lijn:#e3e6ea;--merk:#234C6A;--merk2:#1a3a52;--groen:#17803d;--groenbg:#e6f4ea;--oranje:#b25e09;--oranjebg:#fdf0dc;--paars:#5b3fc4;--paarsbg:#ece8fb;--grijsbg:#eceef1;--rood:#b42318;--roodbg:#fde8e6}
 @media (prefers-color-scheme:dark){:root{--bg:#12161c;--kaart:#1b2129;--tekst:#e8ebef;--zacht:#98a2b3;--lijn:#2c343f;--merk:#5fa3d0;--merk2:#7db8df;--groen:#5fd08a;--groenbg:#173224;--oranje:#f0b25c;--oranjebg:#3a2a12;--paars:#b3a2f5;--paarsbg:#2a2447;--grijsbg:#262d37;--rood:#ff8b80;--roodbg:#3d1b18}}
@@ -39,6 +39,11 @@ textarea{min-height:90px;resize:vertical}
 .p-nieuw{background:var(--oranjebg);color:var(--oranje)}.p-verwerkt{background:var(--paarsbg);color:var(--paars)}
 .p-verzonden,.p-afgeleverd{background:var(--groenbg);color:var(--groen)}.p-geannuleerd{background:var(--roodbg);color:var(--rood)}
 .p-open{background:var(--grijsbg);color:var(--zacht)}
+.winkel{display:inline-block;border-radius:5px;padding:1px 6px;font-size:11.5px;font-weight:700;letter-spacing:.02em;margin-left:6px;vertical-align:1px}
+.w-fatbikehulp{background:var(--merk);color:#fff}.w-deskna{background:#111;color:#fff}.w-fatbiketeile{background:var(--oranje);color:#fff}
+@media (prefers-color-scheme:dark){.w-fatbikehulp,.w-fatbiketeile{color:#0d1117}.w-deskna{background:#e8ebef;color:#111}}
+.oud{font-size:13px;color:var(--zacht)}.oud summary{cursor:pointer;margin-top:8px;color:var(--tekst)}.oud ul{margin:6px 0 0;padding-left:18px}.oud li{margin:2px 0}.oud a{color:var(--merk)}
+.levering{color:var(--oranje);font-size:12.5px;font-weight:600}
 .leeg{padding:36px 16px;text-align:center;color:var(--zacht)}
 .melding{background:var(--oranjebg);color:var(--oranje);border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:14px}
 .fout{background:var(--roodbg);color:var(--rood)}
@@ -73,7 +78,22 @@ const datum = (s) => { const d = new Date(s); return isNaN(d) ? "" : d.toLocaleD
 const tijd = (s) => { const d = new Date(s); return isNaN(d) ? "" : d.toLocaleString("nl-NL", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }); };
 const STATUS = { nieuw: "Te verzenden", verwerkt: "Verwerkt", verzonden: "Verzonden", afgeleverd: "Afgeleverd", geannuleerd: "Geannuleerd" };
 const MAILNAAM = { bevestiging: "Bevestiging", verzonden: "Verzendbericht", vrij: "Eigen bericht" };
-let staat = { orders: [], mailAan: false, afzender: "", opslagAan: true, filter: "nieuw", zoek: "", open: null, fout: "" };
+let staat = { orders: [], winkels: {}, meldingen: [], opslagAan: true, filter: "nieuw", winkel: "alle", zoek: "", open: null, fout: "" };
+
+// Winkel van een order en of er voor die winkel gemaild kan worden.
+const winkelVan = (o) => (o && staat.winkels[o.winkel] ? o.winkel : "fatbikehulp");
+const winkelNaam = (k) => (staat.winkels[k] || {}).naam || k;
+const kanMailen = (o) => !!(staat.winkels[winkelVan(o)] || {}).mailAan;
+const winkelTag = (o) => '<span class="winkel w-' + esc(winkelVan(o)) + '">' + esc(winkelNaam(winkelVan(o))) + "</span>";
+const SITESTATUS = { pending: "betaling niet afgerond", failed: "betaling mislukt", canceled: "geannuleerd", expired: "verlopen", refunded: "terugbetaald", chargeback_lost: "chargeback verloren", open: "betaling open" };
+// Betaald, maar met een kanttekening (uit het oude CRM).
+const BETAALD_MAAR = { partially_refunded: "deels terugbetaald", chargeback: "chargeback loopt" };
+// Hoe de bestelling betaald is, in gewone woorden.
+function betaalTekst(o) {
+  if (o.openBijLevering > 0) return o.aanbetaald > 0 ? "aanbetaald, " + euro(o.openBijLevering) + " open bij levering" : "betalen bij levering (" + euro(o.openBijLevering) + ")";
+  if (o.betaald) { const k = BETAALD_MAAR[(o.oudCrm || {}).betaalstatus]; return k ? "betaald, " + k : "betaald"; }
+  return "niet betaald" + (SITESTATUS[o.siteStatus] ? " (" + SITESTATUS[o.siteStatus] + ")" : "");
+}
 
 async function api(pad, opties) {
   const r = await fetch(pad, { credentials: "same-origin", headers: { "Content-Type": "application/json" }, ...opties, body: opties && opties.body ? JSON.stringify(opties.body) : undefined });
@@ -89,13 +109,13 @@ function statusVan(o) {
   if (o.verzendstatus) return o.verzendstatus;
   if (!o.betaald) return "open";
   const f = o.fulfillmentStatus;
-  return f === "verzonden" || f === "afgeleverd" || f === "verwerkt" ? f : "nieuw";
+  return f === "verzonden" || f === "afgeleverd" || f === "verwerkt" || f === "geannuleerd" ? f : "nieuw";
 }
 function pil(o) { const s = statusVan(o); return '<span class="pil p-' + s + '">' + (s === "open" ? "Niet betaald" : STATUS[s]) + "</span>"; }
 
 function toonLogin(fout) {
   $("#scherm").classList.remove("open");
-  $("#app").innerHTML = '<form class="login" id="lf"><h1>Fatbikehulp CRM</h1><div class="veld"><label for="ww">Wachtwoord</label><input id="ww" type="password" autocomplete="current-password" autofocus></div>' +
+  $("#app").innerHTML = '<form class="login" id="lf"><h1>CRM Fatbikehulp, Deskna &amp; Fatbiketeile</h1><div class="veld"><label for="ww">Wachtwoord</label><input id="ww" type="password" autocomplete="current-password" autofocus></div>' +
     (fout ? '<div class="melding fout">' + esc(fout) + "</div>" : "") + '<button class="knop" style="width:100%">Inloggen</button></form>';
   $("#lf").onsubmit = async (e) => {
     e.preventDefault();
@@ -115,6 +135,7 @@ async function laad() {
 function gefilterd() {
   const z = staat.zoek.trim().toLowerCase();
   return staat.orders.filter((o) => {
+    if (staat.winkel !== "alle" && winkelVan(o) !== staat.winkel) return false;
     if (o.verborgen && staat.filter !== "alles") return false;
     const s = statusVan(o);
     if (staat.filter === "nieuw" && !(s === "nieuw" || s === "verwerkt")) return false;
@@ -123,7 +144,7 @@ function gefilterd() {
     if (staat.filter === "betaald" && !o.betaald) return false;
     if (!z) return true;
     const a = o.shippingAddress || {};
-    return [o.id, o.customerName, o.customerEmail, o.customerPhone, a.postalCode, a.city, o.trackTrace, ...(o.items || []).map((i) => i.name)].join(" ").toLowerCase().includes(z);
+    return [o.id, (o.oudCrm || {}).id, o.customerName, o.customerEmail, o.customerPhone, a.postalCode, a.city, o.trackTrace, ...(o.items || []).map((i) => i.name)].join(" ").toLowerCase().includes(z);
   });
 }
 function tel(f) { const oud = staat.filter, z = staat.zoek; staat.filter = f; staat.zoek = ""; const n = gefilterd().length; staat.filter = oud; staat.zoek = z; return n; }
@@ -131,21 +152,29 @@ function tel(f) { const oud = staat.filter, z = staat.zoek; staat.filter = f; st
 function teken() {
   const tabs = [["nieuw", "Te verzenden"], ["verzonden", "Verzonden"], ["betaald", "Alle betaalde"], ["open", "Niet betaald"], ["alles", "Alles"]];
   const lijst = gefilterd();
+  // Winkels die gekoppeld zijn; de winkelkeuze verschijnt pas als er meer dan één is.
+  const winkels = Object.entries(staat.winkels).filter(([, w]) => w.gekoppeld);
+  const zonderMail = winkels.filter(([, w]) => !w.mailAan).map(([, w]) => w.naam);
   $("#app").innerHTML =
-    '<div class="kop"><h1>Fatbikehulp CRM</h1><button class="knop licht" id="ververs">Verversen</button><button class="knop licht" id="uit">Uitloggen</button></div><div class="wrap">' +
+    '<div class="kop"><h1>CRM</h1><button class="knop licht" id="ververs">Verversen</button><button class="knop licht" id="uit">Uitloggen</button></div><div class="wrap">' +
     (staat.fout ? '<div class="melding fout">' + esc(staat.fout) + "</div>" : "") +
+    (staat.meldingen || []).map((m) => '<div class="melding fout">' + esc(m) + "</div>").join("") +
     (!staat.opslagAan ? '<div class="melding fout">De opslag is nog niet gekoppeld. Je kunt bestellingen bekijken, maar nog niet bewerken.</div>' : "") +
-    (!staat.mailAan ? '<div class="melding">Mailen staat nog uit. Bestellingen bewerken werkt wel.</div>' : "") +
+    (zonderMail.length ? '<div class="melding">Mailen staat nog uit voor ' + esc(zonderMail.join(" en ")) + ". Bestellingen bewerken werkt wel.</div>" : "") +
     '<div class="balk"><input id="zoek" type="search" placeholder="Zoek op naam, e-mail, ordernummer, postcode of product" value="' + esc(staat.zoek) + '"></div>' +
+    (winkels.length > 1 ? '<div class="tabs">' + [["alle", "Alle winkels"], ...winkels.map(([k, w]) => [k, w.naam])].map(([k, n]) =>
+      '<button class="tab' + (staat.winkel === k ? " aan" : "") + '" data-w="' + esc(k) + '">' + esc(n) + "</button>").join("") + "</div>" : "") +
     '<div class="tabs">' + tabs.map(([k, n]) => '<button class="tab' + (staat.filter === k ? " aan" : "") + '" data-f="' + k + '">' + n + "<b>" + tel(k) + "</b></button>").join("") + "</div>" +
     '<div class="lijst" id="lijst">' + (lijst.length ? lijst.map((o) =>
-      '<div class="rij" data-id="' + esc(o.id) + '"><div class="klein datum">' + esc(datum(o.createdAt)) + '</div><div style="min-width:0"><div class="naam">' + esc(o.customerName || "Onbekend") +
-      '</div><div class="wat">' + esc((o.items || []).map((i) => i.quantity + "× " + i.name).join(", ")) + '</div></div><div class="status">' + pil(o) + '</div><div class="bedrag">' + esc(euro(o.amount)) + "</div></div>").join("")
+      '<div class="rij" data-id="' + esc(o.id) + '"><div class="klein datum">' + esc(datum(o.createdAt)) + '</div><div style="min-width:0"><div class="naam">' + esc(o.customerName || "Onbekend") + (winkels.length > 1 ? winkelTag(o) : "") +
+      '</div><div class="wat">' + esc((o.items || []).map((i) => i.quantity + "× " + i.name).join(", ")) + '</div></div><div class="status">' + pil(o) + '</div><div class="bedrag">' + esc(euro(o.amount)) +
+      (o.openBijLevering > 0 ? '<div class="levering">' + esc(euro(o.openBijLevering)) + " open</div>" : "") + "</div></div>").join("")
       : '<div class="leeg">' + (staat.orders.length ? "Geen bestellingen in deze weergave." : "Nog geen bestellingen.") + "</div>") + "</div></div>";
+  document.querySelectorAll("[data-w]").forEach((b) => (b.onclick = () => { staat.winkel = b.dataset.w; teken(); }));
   $("#ververs").onclick = () => laad().then(() => toast("Bijgewerkt"));
   $("#uit").onclick = async () => { await api("/api/login", { method: "DELETE" }); toonLogin(); };
   $("#zoek").oninput = (e) => { staat.zoek = e.target.value; const p = e.target.selectionStart; teken(); const z = $("#zoek"); z.focus(); z.setSelectionRange(p, p); };
-  document.querySelectorAll(".tab").forEach((b) => (b.onclick = () => { staat.filter = b.dataset.f; teken(); }));
+  document.querySelectorAll("[data-f]").forEach((b) => (b.onclick = () => { staat.filter = b.dataset.f; teken(); }));
   document.querySelectorAll(".rij").forEach((r) => (r.onclick = () => openOrder(r.dataset.id)));
 }
 
@@ -160,19 +189,25 @@ function tekenPaneel() {
   const a = o.shippingAddress || {};
   const s = statusVan(o);
   const veld = (id, label, w, type) => '<div class="veld"><label for="' + id + '">' + label + '</label><input id="' + id + '" type="' + (type || "text") + '" value="' + esc(w) + '"></div>';
-  const uit = !staat.mailAan ? " disabled" : "";
+  const uit = !kanMailen(o) ? " disabled" : "";
+  const afzender = (staat.winkels[winkelVan(o)] || {}).afzender || "";
   $("#paneel").innerHTML =
-    '<div style="display:flex;align-items:center;gap:10px"><div style="flex:1"><h2>' + esc(o.id) + '</h2><div style="color:var(--zacht);font-size:13px">' + esc(tijd(o.createdAt)) + " · " + (o.betaald ? "betaald" : "niet betaald") + " · " + esc(euro(o.amount)) + '</div></div><button class="knop licht" id="dicht">Sluiten</button></div>' +
+    '<div style="display:flex;align-items:center;gap:10px"><div style="flex:1"><h2>' + esc(o.id) + winkelTag(o) + '</h2><div style="color:var(--zacht);font-size:13px">' + esc(tijd(o.createdAt)) + " · " + esc(betaalTekst(o)) + " · " + esc(euro(o.amount)) +
+    (o.paymentMethod && o.paymentMethod !== "on_delivery" ? " · " + esc(o.paymentMethod) : "") + '</div></div><button class="knop licht" id="dicht">Sluiten</button></div>' +
     '<div class="blok"><h3>Bestelling</h3>' + (o.items || []).map((i) => '<div class="item"><span>' + esc(i.quantity) + "× " + esc(i.name) + "</span><span>" + esc(euro((Number(i.price) || 0) * (Number(i.quantity) || 1))) + "</span></div>").join("") +
     (o.shippingCost ? '<div class="item"><span>Verzending' + (o.deliveryType ? " (" + esc(o.deliveryType) + ")" : "") + "</span><span>" + esc(euro(o.shippingCost)) + "</span></div>" : "") +
-    (o.parcelShop && o.parcelShop.name ? '<div class="item"><span>Afhaalpunt: ' + esc(o.parcelShop.name) + "</span><span></span></div>" : "") + "</div>" +
+    (o.parcelShop && o.parcelShop.name ? '<div class="item"><span>Afhaalpunt: ' + esc(o.parcelShop.name) + "</span><span></span></div>" : "") +
+    (o.aanbetaald > 0 ? '<div class="item"><span>Aanbetaald</span><span>' + esc(euro(o.aanbetaald)) + "</span></div>" : "") +
+    (o.openBijLevering > 0 ? '<div class="item"><span class="levering">Te betalen bij levering</span><span class="levering">' + esc(euro(o.openBijLevering)) + "</span></div>" : "") + "</div>" +
+    oudBlok(o) +
     '<div class="blok"><h3>Afhandeling</h3><div class="twee"><div class="veld"><label for="f-status">Status</label><select id="f-status">' +
     (s === "open" ? '<option value="" selected>Niet betaald</option>' : "") + Object.entries(STATUS).map(([k, n]) => '<option value="' + k + '"' + (k === s ? " selected" : "") + ">" + n + "</option>").join("") + "</select></div>" +
     veld("f-tt", "Volgcode of volglink", o.trackTrace || "") + '</div><div class="veld"><label for="f-not">Notitie (alleen voor jou)</label><textarea id="f-not">' + esc(o.notitie || "") + "</textarea></div></div>" +
     '<div class="blok"><h3>Klant</h3>' + veld("f-naam", "Naam", o.customerName || "") + '<div class="twee">' + veld("f-mail", "E-mail", o.customerEmail || "", "email") + veld("f-tel", "Telefoon", o.customerPhone || "", "tel") + "</div>" +
     '<div class="drie">' + veld("f-str", "Straat", a.street || a.streetAndNumber || "") + veld("f-nr", "Huisnummer", a.houseNumber || "") + '</div><div class="twee">' + veld("f-pc", "Postcode", a.postalCode || "") + veld("f-plaats", "Plaats", a.city || "") + "</div></div>" +
     '<div class="blok"><div class="acties"><button class="knop" id="opslaan">Opslaan</button><button class="knop licht" id="verberg">' + (o.verborgen ? "Terugzetten in de lijst" : "Verbergen uit de lijst") + "</button></div></div>" +
-    '<div class="blok"><h3>Mail naar klant</h3><div class="acties"><button class="knop licht" data-mail="bevestiging"' + uit + '>Bevestiging sturen</button><button class="knop licht" data-mail="verzonden"' + uit + '>Verzendbericht sturen</button></div>' +
+    '<div class="blok"><h3>Mail naar klant' + (kanMailen(o) && afzender ? " (vanaf " + esc(afzender) + ")" : "") + "</h3>" +
+    (!kanMailen(o) ? '<p class="log" style="margin:0 0 10px">Mailen staat voor ' + esc(winkelNaam(winkelVan(o))) + " nog uit.</p>" : "") + '<div class="acties"><button class="knop licht" data-mail="bevestiging"' + uit + '>Bevestiging sturen</button><button class="knop licht" data-mail="verzonden"' + uit + '>Verzendbericht sturen</button></div>' +
     '<div class="veld" style="margin-top:12px"><label for="m-ond">Eigen bericht: onderwerp</label><input id="m-ond"></div><div class="veld"><label for="m-tekst">Bericht</label><textarea id="m-tekst" placeholder="De aanhef en afsluiting schrijf je zelf. De bestelling staat er automatisch onder."></textarea></div>' +
     '<button class="knop licht" data-mail="vrij"' + uit + ">Eigen bericht sturen</button>" +
     (o.mails && o.mails.length ? '<ul class="log">' + o.mails.slice().reverse().map((m) => "<li>" + esc(tijd(m.tijd)) + " · " + esc(MAILNAAM[m.soort] || m.soort) + (m.automatisch ? " (automatisch)" : "") + " naar " + esc(m.aan) + "</li>").join("") + "</ul>" : '<p class="log">Nog geen mail verstuurd vanuit de CRM.</p>') + "</div>";
@@ -180,6 +215,29 @@ function tekenPaneel() {
   $("#opslaan").onclick = () => opslaan();
   $("#verberg").onclick = () => stuur({ verborgen: !o.verborgen }, o.verborgen ? "Teruggezet" : "Verborgen");
   document.querySelectorAll("[data-mail]").forEach((b) => (b.onclick = () => mail(b.dataset.mail, b)));
+}
+
+// Wat het oude CRM (tot 14 okt 2026) over deze order wist: alleen ter informatie.
+const OUDSTATUS = { nieuw: "nieuw", verwerkt: "verwerkt", verzonden: "verzonden", afgerond: "afgerond", geannuleerd: "geannuleerd" };
+const BETAALSTATUS = { paid: "betaald", partially_refunded: "deels terugbetaald", refunded: "terugbetaald", chargeback: "chargeback loopt", chargeback_lost: "chargeback verloren", open: "open" };
+const MELDING = { refund: "Terugbetaling", partial_refund: "Deels terugbetaald", chargeback: "Chargeback" };
+const DISPUUT = { lost: "verloren", won: "gewonnen", needs_response: "reactie nodig", under_review: "in behandeling", warning_closed: "waarschuwing gesloten", warning_needs_response: "waarschuwing, reactie nodig", warning_under_review: "waarschuwing in behandeling" };
+function oudBlok(o) {
+  const c = o.oudCrm;
+  if (!c) return "";
+  const lijst = (titel, items) => items && items.length ? '<details><summary>' + esc(titel) + " (" + items.length + ")</summary><ul>" + items.join("") + "</ul></details>" : "";
+  const link = (url, tekst) => /^https:\/\//i.test(url || "") ? '<a href="' + esc(url) + '" target="_blank" rel="noopener noreferrer">' + esc(tekst) + "</a>" : esc(tekst);
+  return '<div class="blok oud"><h3>Uit het oude CRM</h3><div>Ordernummer #' + esc(c.nummer) + (o.id !== c.id && c.id ? " (ook in de webshop)" : "") +
+    " · status daar: " + esc(OUDSTATUS[c.status] || c.status) + " · betaling: " + esc(BETAALSTATUS[c.betaalstatus] || c.betaalstatus) + (c.handmatig ? " · handmatig ingevoerd" : "") + "</div>" +
+    (c.aangenomen ? "<div>Stond daar nog op “" + esc(OUDSTATUS[c.status] || c.status) + "”. De order is betaald en ouder dan een maand, dus hier staat hij op Afgeleverd.</div>" : "") +
+    (o.volgUrl && o.volgCode ? "<div>Volgcode: " + link(o.volgUrl, o.volgCode) + "</div>" : "") +
+    (c.gewensteLeverdatum ? "<div>Gewenste leverdatum: " + esc(c.gewensteLeverdatum) + "</div>" : "") +
+    (o.deliveryDate ? "<div>Verwachte levering bij bestellen: " + esc(o.deliveryDate) + "</div>" : "") +
+    lijst("Betaalmeldingen", (c.betaalmeldingen || []).map((b) => "<li>" + esc(tijd(b.tijd)) + " · " + esc(MELDING[b.soort] || b.soort) + " " + esc(euro(b.bedrag)) + (b.status ? " · " + esc(DISPUUT[b.status] || b.status.replace(/_/g, " ")) : "") + (b.reden ? " · " + esc(b.reden.replace(/_/g, " ")) : "") + "</li>")) +
+    lijst("Retouren", (c.retouren || []).map((r) => "<li>" + esc(tijd(r.tijd)) + " · " + esc((r.reden || "").replace(/_/g, " ")) + " · " + esc(r.afhandeling || r.status) + (r.trackTrace ? " · " + link(r.volgUrl, r.trackTrace) : "") + (r.notitie ? " · " + esc(r.notitie) : "") + "</li>")) +
+    lijst("Statusgeschiedenis", (c.geschiedenis || []).map((h) => "<li>" + esc(tijd(h.tijd)) + " · " + esc(OUDSTATUS[h.status] || h.status) + (h.notitie ? " · " + esc(h.notitie) : "") + "</li>")) +
+    lijst("Mails vanuit het oude CRM", (c.mails || []).map((m) => "<li>" + esc(tijd(m.tijd)) + " · " + esc(m.onderwerp) + " · naar " + esc(m.aan) + (m.mislukt ? " · <b>mislukt</b>" : "") + "</li>")) +
+    "</div>";
 }
 
 function formulier() {
