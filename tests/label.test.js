@@ -6,12 +6,15 @@ process.env.KV_REST_API_URL = "http://opslag.test"; process.env.KV_REST_API_TOKE
 process.env.LABEL_BOT_SLEUTEL = "bot-sleutel-van-minstens-24-tekens";
 process.env.SEINTJE_URL = "http://seintje.test/in/sleutel";
 
-// Opslag en Seintje nagebootst in het geheugen.
+process.env.MAIL_WACHTWOORD = "mailwachtwoord";
+
+// Opslag, Seintje en de mailserver nagebootst in het geheugen.
 const opslag = {};
-const pushes = [];
+const pushes = [], mails = [];
 global.fetch = async (url, opties) => {
   const body = JSON.parse(opties.body);
   if (String(url).startsWith("http://seintje.test")) { pushes.push(body); return { ok: true, status: 200, json: async () => ({ ok: true }) }; }
+  if (String(url).startsWith("https://api.forwardemail.net")) { mails.push(body); return { ok: true, status: 200, json: async () => ({ id: "m1" }) }; }
   const [cmd, sleutel, veld, waarde] = body;
   const h = (opslag[sleutel] = opslag[sleutel] || {});
   let result = null;
@@ -20,12 +23,16 @@ global.fetch = async (url, opties) => {
   else if (cmd === "HGETALL") result = Object.entries(h).flat();
   else if (cmd === "SET") { opslag[sleutel] = veld; result = "OK"; }
   else if (cmd === "GET") result = typeof opslag[sleutel] === "string" ? opslag[sleutel] : null;
+  else if (cmd === "RPUSH") { (opslag[sleutel] = Array.isArray(opslag[sleutel]) ? opslag[sleutel] : []).push(veld); result = opslag[sleutel].length; }
+  else if (cmd === "LRANGE") result = Array.isArray(opslag[sleutel]) ? opslag[sleutel] : [];
   else throw new Error("onbekend opslagcommando " + cmd);
   return { ok: true, status: 200, json: async () => ({ result }) };
 };
 const label = require("../api/_label");
+const lib = require("../api/_lib");
+const logTeksten = async (id) => (await lib.leesLog(id)).map((r) => r.tekst);
 
-const order = (extra) => ({ id: "ORD-1", customerName: "Jan de Vries", customerEmail: "jan@example.com", shippingAddress: { street: "Dorpsstraat", houseNumber: "12a", postalCode: "8501 ab", city: "Joure", country: "NL" }, ...extra });
+const order =(extra) => ({ id: "ORD-1", customerName: "Jan de Vries", customerEmail: "jan@example.com", shippingAddress: { street: "Dorpsstraat", houseNumber: "12a", postalCode: "8501 ab", city: "Joure", country: "NL" }, ...extra });
 const bot = { headers: { authorization: "Bearer bot-sleutel-van-minstens-24-tekens" } };
 
 test("ontvanger: naam, postcode en huisnummer met toevoeging", () => {
@@ -51,6 +58,7 @@ test("alleen de bot met de juiste sleutel komt erin", () => {
 });
 
 test("van aanvraag tot volgcode: bot pakt één keer op, betaallink gaat naar de telefoon, volgcode komt bij de order", async () => {
+  opslag.orders = JSON.stringify([{ ...order(), amount: 20, status: "betaald", items: [{ name: "Binnenband", quantity: 1, price: 20 }] }]);
   await assert.rejects(label.vraagAan(order(), { formaat: "REUS" }), /formaat/);
   const j = await label.vraagAan(order(), { formaat: "SMALL", bezorging: "deur" });
   assert.strictEqual(j.status, "wacht"); assert.strictEqual(j.id, undefined); assert.strictEqual(j.ontvanger, undefined);
@@ -74,19 +82,56 @@ test("van aanvraag tot volgcode: bot pakt één keer op, betaallink gaat naar de
   const pdf = Buffer.from("%PDF-1.4 proeflabel");
   const k = await label.meld({ orderId: "ORD-1", id: op.id, status: "klaar", trackTrace: "JVGL0612345678", labelPdf: pdf.toString("base64") });
   assert.strictEqual(k.status, "klaar"); assert.strictEqual(k.betaalUrl, undefined);
-  assert.strictEqual(k.heeftPdf, true, "het label is bewaard");
-  assert.deepStrictEqual(await label.leesPdf("ORD-1"), pdf);
-  assert.strictEqual(await label.leesPdf("ORD-onbekend"), null);
-  assert.strictEqual(await label.bewaarPdf("ORD-2", Buffer.from("<html>geen pdf").toString("base64")), false, "alleen een echte pdf wordt bewaard");
-  assert.strictEqual(JSON.parse(opslag["crm:orders"]["ORD-1"]).trackTrace, "JVGL0612345678");
-  assert.match(pushes[1].titel, /klaar/);
+  assert.strictEqual(k.heeftPdf, true, "het label is bewaard"); assert.strictEqual(k.pdfId, op.id);
+  assert.deepStrictEqual(await label.leesPdf("ORD-1", op.id), pdf);
+  assert.strictEqual(await label.leesPdf("ORD-1", "een-ander-label"), null);
+  assert.strictEqual(await label.bewaarPdf("ORD-2", "label-0001", Buffer.from("<html>geen pdf").toString("base64")), false, "alleen een echte pdf wordt bewaard");
+  // De order gaat op Verzonden en de klant krijgt één keer het verzendbericht met de volglink.
+  const w = JSON.parse(opslag["crm:orders"]["ORD-1"]);
+  assert.strictEqual(w.trackTrace, "JVGL0612345678"); assert.strictEqual(w.verzendstatus, "verzonden");
+  assert.strictEqual(k.klantMail, "verstuurd"); assert.strictEqual(mails.length, 1);
+  assert.strictEqual(mails[0].to, "jan@example.com"); assert.match(mails[0].html, /tracktrace\/JVGL0612345678\/8501AB/);
+  assert.strictEqual(w.mails[0].soort, "verzonden"); assert.strictEqual(w.mails[0].automatisch, true);
+  assert.strictEqual(await label.mailKlant("ORD-1"), "had al een verzendbericht");
+  assert.match(pushes[1].titel, /klaar/); assert.match(pushes[1].tekst, /verzendbericht gekregen/);
   await assert.rejects(label.meld({ orderId: "ORD-1", id: op.id, status: "mislukt" }), /al klaar/);
-  // Daarna mag er een nieuw label voor dezelfde order worden gemaakt.
+  // Alles staat in het logboek, in volgorde.
+  const log = await lib.leesLog("ORD-1");
+  assert.deepStrictEqual(log.map((r) => r.tekst), [
+    "DHL-label aangevraagd: Pakket tot 5 kg, thuisbezorgen, naar 8501AB 12 a",
+    "DHL-formulier ingevuld, betaallink van € 6,55 naar de telefoon gestuurd",
+    "DHL-label betaald en gemaakt (Pakket tot 5 kg, thuisbezorgen, € 6,55), volgcode JVGL0612345678",
+    "Volgcode JVGL0612345678 ingevuld en status op Verzonden gezet",
+    "Verzendbericht gemaild naar jan@example.com"
+  ]);
+  assert.strictEqual(log[2].pdf, op.id); assert.strictEqual(log[2].door, "bot"); assert.strictEqual(log[4].door, "automatisch");
+  // Daarna mag er een nieuw label voor dezelfde order worden gemaakt; het eerste label blijft bewaard.
   assert.strictEqual((await label.vraagAan(order(), { formaat: "XSMALL", bezorging: "punt" })).status, "wacht");
+  assert.deepStrictEqual(await label.leesPdf("ORD-1", op.id), pdf);
+});
+
+test("zonder volgcode: geen status Verzonden en geen mail naar de klant", async () => {
+  opslag.orders = JSON.stringify([{ ...order({ id: "ORD-9" }), amount: 20, status: "betaald" }]);
+  await label.vraagAan(order({ id: "ORD-9" }), { formaat: "SMALL" });
+  const op = (await label.voorBot()).opdrachten.find((x) => x.orderId === "ORD-9");
+  await label.meld({ orderId: "ORD-9", id: op.id, status: "betalen", betaalUrl: "https://my.dhlecommerce.nl/payment/start?paymentId=x", bedrag: 6.55 });
+  const voor = mails.length;
+  const k = await label.meld({ orderId: "ORD-9", id: op.id, status: "klaar", trackTrace: "" });
+  assert.strictEqual(k.klantMail, "geen volgcode"); assert.strictEqual(mails.length, voor);
+  assert.strictEqual((opslag["crm:orders"] || {})["ORD-9"], undefined);
+  assert.match((await logTeksten("ORD-9")).pop(), /met de hand/);
+});
+
+test("logboek: wijzigingen met oude en nieuwe waarde", () => {
+  const voor = { verzendstatus: "nieuw", trackTrace: "", customerName: "Jan", notitie: "", shippingAddress: { city: "Joure", postalCode: "8501AB" } };
+  const na = { verzendstatus: "verzonden", trackTrace: "JVGL1", customerName: "Jan", notitie: "bellen", verborgen: true, shippingAddress: { city: "Sneek", postalCode: "8501AB" } };
+  assert.deepStrictEqual(lib.verschillen(voor, na), ["Status: Te verzenden → Verzonden", "Volgcode: leeg → JVGL1", "Plaats: Joure → Sneek", "Notitie aangepast", "Verborgen uit de lijst"]);
+  assert.deepStrictEqual(lib.verschillen(voor, voor), []);
 });
 
 test("annuleren stopt een lopend label; stilgevallen opdrachten verlopen", async () => {
   assert.strictEqual((await label.annuleer("ORD-1")).status, "geannuleerd");
+  assert.match((await logTeksten("ORD-1")).pop(), /geannuleerd/);
   assert.deepStrictEqual(await label.voorBot(), { opdrachten: [], wachtOpBetaling: [] });
   const oud = new Date(Date.now() - 60 * 60 * 1000).toISOString();
   assert.strictEqual(label.metVerloop({ status: "betalen", bijgewerkt: oud }).status, "verlopen");

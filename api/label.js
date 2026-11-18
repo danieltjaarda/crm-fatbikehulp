@@ -1,8 +1,8 @@
-const { bewaak, eenOrder } = require("./_lib");
+const { bewaak, eenOrder, logboek } = require("./_lib");
 const label = require("./_label");
 
 // DHL-label voor één order.
-//  Scherm (ingelogd):  GET = alle labelopdrachten, GET ?pdf=<order> = het label zelf,
+//  Scherm (ingelogd):  GET = alle labelopdrachten, GET ?pdf=<order>&label=<label> = het label zelf,
 //                      POST = label aanvragen, DELETE ?id= = annuleren.
 //  Bot (Authorization: Bearer LABEL_BOT_SLEUTEL):  GET = opdrachten ophalen, PUT = voortgang melden.
 module.exports = async (req, res) => {
@@ -14,10 +14,11 @@ module.exports = async (req, res) => {
       return res.status(405).json({ fout: "Niet toegestaan" });
     }
     if (!bewaak(req, res)) return;
-    // ?pdf=<order> geeft het label zelf, om te openen en te printen.
+    // ?pdf=<order>&label=<label> geeft het label zelf, om te openen en te printen.
     if (req.method === "GET" && req.query && req.query.pdf) {
-      const pdf = await label.leesPdf(String(req.query.pdf));
-      if (!pdf) return res.status(404).json({ fout: "Dit label is niet (meer) bewaard. Kijk in de mail van DHL." });
+      const pdf = await label.leesPdf(String(req.query.pdf), String(req.query.label || ""));
+      if (!pdf) return res.status(404).json({ fout: "Dit label is niet bewaard. Kijk in de mail van DHL." });
+      await logboek(String(req.query.pdf), "DHL-label geopend om te printen");
       res.setHeader("Content-Type", "application/pdf");
       res.setHeader("Content-Disposition", 'inline; filename="dhl-label-' + String(req.query.pdf).replace(/[^\w-]/g, "_") + '.pdf"');
       res.statusCode = 200;

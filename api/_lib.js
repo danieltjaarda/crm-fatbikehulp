@@ -346,10 +346,39 @@ async function pasAan(id, invoer) {
   return samen;
 }
 
+const MAILNAAM = { bevestiging: "Bevestiging", verzonden: "Verzendbericht", vrij: "Eigen bericht" };
 async function logMail(id, regel) {
   const w = await wijziging(id);
   w.mails = [...(w.mails || []), { ...regel, tijd: new Date().toISOString() }].slice(-50);
   await bewaarWijziging(id, w);
+  await logboek(id, (MAILNAAM[regel.soort] || "Mail") + " gemaild naar " + regel.aan + (regel.onderwerp && regel.soort === "vrij" ? " (" + regel.onderwerp + ")" : ""), { door: regel.automatisch ? "automatisch" : "jij" });
+}
+
+// ---------- logboek ----------
+// Alles wat er met een order gebeurt komt als regel in de lijst `crm:log:<order>` en
+// blijft daar staan: er wordt alleen bijgeschreven, nooit iets gewist of overschreven.
+// Het logboek mag een actie nooit laten mislukken, dus fouten worden hier opgevangen.
+async function logboek(id, tekst, extra) {
+  try { await kv("RPUSH", "crm:log:" + id, JSON.stringify({ tijd: new Date().toISOString(), tekst: String(tekst).slice(0, 500), door: "jij", ...(extra || {}) })); }
+  catch (e) { console.log("logboek: schrijven mislukt voor " + id + ": " + e.message); }
+}
+async function leesLog(id) {
+  if (!opslagAan()) return [];
+  const regels = (await kv("LRANGE", "crm:log:" + id, 0, -1)) || [];
+  return regels.map((r) => { try { return typeof r === "string" ? JSON.parse(r) : r; } catch (e) { return null; } }).filter(Boolean);
+}
+const VELDNAAM = { verzendstatus: "Status", trackTrace: "Volgcode", customerName: "Naam", customerEmail: "E-mail", customerPhone: "Telefoon", street: "Straat", houseNumber: "Huisnummer", postalCode: "Postcode", city: "Plaats", country: "Land" };
+const STATUSNAAM = { nieuw: "Te verzenden", verwerkt: "Verwerkt", verzonden: "Verzonden", afgeleverd: "Afgeleverd", geannuleerd: "Geannuleerd" };
+/** Wat er tussen twee versies van een order is veranderd, als leesbare regels ("Status: Te verzenden → Verzonden"). */
+function verschillen(voor, na) {
+  const uit = [];
+  const toon = (k, v) => (k === "verzendstatus" ? STATUSNAAM[v] || "" : String(v == null ? "" : v).trim()) || "leeg";
+  const vergelijk = (k, a, b) => { if (String(a == null ? "" : a).trim() !== String(b == null ? "" : b).trim()) uit.push(VELDNAAM[k] + ": " + toon(k, a) + " → " + toon(k, b)); };
+  for (const k of ["verzendstatus", "trackTrace", "customerName", "customerEmail", "customerPhone"]) vergelijk(k, voor[k], na[k]);
+  for (const k of ADRESVELDEN) vergelijk(k, (voor.shippingAddress || {})[k], (na.shippingAddress || {})[k]);
+  if (String(voor.notitie || "").trim() !== String(na.notitie || "").trim()) uit.push("Notitie aangepast");
+  if (!!voor.verborgen !== !!na.verborgen) uit.push(na.verborgen ? "Verborgen uit de lijst" : "Teruggezet in de lijst");
+  return uit;
 }
 
 // ---------- inloggen ----------
@@ -496,8 +525,9 @@ function volgLink(o) {
   if (/^https?:\/\//i.test(c)) return c;
   // Volgcode uit het oude CRM: daar hoort de volglink bij die toen is gemaakt (DHL of UPS).
   if (o.volgUrl && c === o.volgCode && /^https:\/\//i.test(o.volgUrl)) return o.volgUrl;
-  // Alleen Fatbikehulp verstuurt met DHL; bij Deskna telt alleen een volledige link.
-  if (winkelVan(o) !== "fatbikehulp") return "";
+  // Fatbikehulp verstuurt altijd met DHL; bij de andere winkels alleen een herkenbare DHL-code
+  // (bv. van een label uit de CRM), anders telt daar alleen een volledige link.
+  if (winkelVan(o) !== "fatbikehulp" && !/^(JVGL|JJD|3S)[A-Z0-9]{8,}$/i.test(c)) return "";
   const pc = String((o.shippingAddress || {}).postalCode || "").replace(/\s/g, "").toUpperCase();
   return "https://my.dhlecommerce.nl/home/tracktrace/" + encodeURIComponent(c) + (pc ? "/" + encodeURIComponent(pc) : "");
 }
@@ -589,7 +619,7 @@ function meldingMail(o, aan) {
 }
 
 module.exports = {
-  DAG, kv, opslagAan, alleOrders, alleOrdersMetMeldingen, eenOrder, pasAan, logMail, schoon, samengevoegd, isBetaald,
+  DAG, kv, opslagAan, alleOrders, alleOrdersMetMeldingen, eenOrder, pasAan, logMail, logboek, leesLog, verschillen, schoon, samengevoegd, isBetaald,
   wachtwoordKlopt, maakCookie, ingelogd, bewaak, mailAan, mailVan, kaalAdres, verstuur, maakMail, meldingMail,
   geldigAdres, volgLink, VERZENDSTATUSSEN, WINKELS, winkelVan, winkelInfo, vanDeskna, desknaAan, archief, koppelArchief
 };
