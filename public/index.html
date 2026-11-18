@@ -260,13 +260,18 @@ function labelBlok(o) {
   const j = staat.labels[o.id];
   const s = j ? j.status : "";
   const wat = j && staat.formaten[j.formaat] ? staat.formaten[j.formaat].naam : "";
+  // Het laatste verzendbericht (met de tracking) dat naar de klant is gegaan, als dat er is.
+  const gemaild = (o.mails || []).filter((m) => m.soort === "verzonden").pop();
   let kop = "";
   if (s === "wacht") kop = '<div class="melding"><span class="draai"></span>Wacht op de bot… (' + esc(wat) + ")" + (Date.now() - Date.parse(j.aangemaakt) > 60000 ? "<br>De bot heeft de opdracht nog niet opgepakt. Staat de pc aan en draait de bot?" : "") + "</div>";
   else if (s === "bezig") kop = '<div class="melding"><span class="draai"></span>De bot vult het formulier van DHL in… (' + esc(wat) + ")</div>";
   else if (s === "betalen") kop = '<div class="melding">Klaar om te betalen: <b>' + esc(euro(j.bedrag)) + "</b> voor " + esc(wat) + '. De melding staat op je telefoon.</div><p style="margin:0 0 10px"><a class="knop" style="text-decoration:none" href="' + esc(j.betaalUrl) + '" target="_blank" rel="noopener noreferrer">Hier betalen bij DHL</a></p>';
   else if (s === "klaar") kop = '<div class="melding goed">Label gemaakt op ' + esc(tijd(j.bijgewerkt)) + (j.trackTrace ? " · volgcode " + esc(j.trackTrace) : " · volgcode niet gevonden, vul hem zelf in") + (j.heeftPdf ? "." : ". Het label staat in je mail van DHL.") +
-    (j.klantMail === "verstuurd" ? "<br>De klant heeft het verzendbericht gekregen." : j.klantMail ? "<br>De klant is niet automatisch gemaild (" + esc(j.klantMail) + ")." : "") + "</div>" +
-    (j.pdfId ? '<div class="acties" style="margin:0 0 14px"><button class="knop" id="l-print" data-label="' + esc(j.pdfId) + '">Printen op de Zebra</button><a class="knop licht" style="text-decoration:none" href="' + esc(labelLink(o.id, j.pdfId)) + '" target="_blank" rel="noopener">Label openen</a></div>' : "");
+    "<br>" + (gemaild ? "De klant heeft de tracking gekregen op " + esc(tijd(gemaild.tijd)) + "." : "De klant is nog niet gemaild.") + "</div>" +
+    '<div class="acties" style="margin:0 0 14px">' +
+    (j.pdfId ? '<button class="knop" id="l-print" data-label="' + esc(j.pdfId) + '">Printen op de Zebra</button>' : "") +
+    '<button class="knop' + (gemaild ? " licht" : "") + '" id="l-mail" data-mail="verzonden"' + (kanMailen(o) ? "" : " disabled") + ">" + (gemaild ? "Tracking opnieuw mailen" : "Tracking mailen") + "</button>" +
+    (j.pdfId ? '<a class="knop licht" style="text-decoration:none" href="' + esc(labelLink(o.id, j.pdfId)) + '" target="_blank" rel="noopener">Label openen</a>' : "") + "</div>";
   else if (s === "mislukt") kop = '<div class="melding fout">Label maken is mislukt: ' + esc(j.fout || "onbekende fout") + "</div>";
   else if (s === "verlopen") kop = '<div class="melding">De betaallink is verlopen zonder betaling. Er is geen label gemaakt.</div>';
   else if (s === "geannuleerd") kop = '<div class="melding">Het label is geannuleerd.</div>';
@@ -290,6 +295,7 @@ function tekenLabel() {
   if ($("#l-maak")) $("#l-maak").onclick = () => maakLabel();
   if ($("#l-stop")) $("#l-stop").onclick = () => stopLabel();
   if ($("#l-print")) $("#l-print").onclick = () => printLabel($("#l-print").dataset.label);
+  if ($("#l-mail")) $("#l-mail").onclick = () => mail("verzonden");
   if ($("#l-ververs")) $("#l-ververs").onclick = () => lader("#l-ververs", async () => { await laad(); if (staat.open) { tekenPaneel(); await laadLog(); } toast("Bijgewerkt"); });
   markeer();
   volgLabel();

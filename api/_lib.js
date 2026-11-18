@@ -535,24 +535,45 @@ function volgLink(o) {
   return "https://my.dhlecommerce.nl/home/tracktrace/" + encodeURIComponent(c) + (pc ? "/" + encodeURIComponent(pc) : "");
 }
 
-function opmaak(titel, alineas, o, knop) {
+/**
+ * De html van een mail: kop in de kleur van de winkel, de tekst, bij een verzendbericht een
+ * kaart met de volgcode en een grote knop, en daaronder de bestelling en het adres.
+ * Opgebouwd met tabellen en vaste stijlen per element, want dat is wat mailprogramma's
+ * (Outlook, Gmail, Apple Mail) betrouwbaar tonen.
+ */
+function opmaak(titel, alineas, o, knop, volgcode) {
   const w = WINKELS[winkelVan(o)];
   const t = woorden(o);
+  const lettertype = "font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif";
+  const cel = "padding:10px 0;border-bottom:1px solid #eceef1;font-size:14px;line-height:1.45;color:#1f2933";
   const regels = (o.items || []).map((i) =>
-    '<tr><td style="padding:6px 0;border-bottom:1px solid #eee">' + esc(i.quantity) + " × " + esc(i.name) + '</td><td style="padding:6px 0;border-bottom:1px solid #eee;text-align:right;white-space:nowrap">' + esc(euro((Number(i.price) || 0) * (Number(i.quantity) || 1))) + "</td></tr>").join("");
-  return '<div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;margin:0 auto;color:#222;font-size:15px;line-height:1.5">' +
-    '<h1 style="font-size:20px;color:' + w.kleur + ';margin:0 0 16px">' + esc(titel) + "</h1>" +
-    alineas.map((a) => '<p style="margin:0 0 14px">' + esc(a).replace(/\n/g, "<br>") + "</p>").join("") +
-    (knop ? '<p style="margin:0 0 18px"><a href="' + esc(knop.url) + '" style="background:' + w.kleur + ';color:#fff;padding:11px 18px;border-radius:6px;text-decoration:none;display:inline-block">' + esc(knop.tekst) + "</a></p>" : "") +
-    '<div style="background:#f6f7f8;border-radius:8px;padding:16px;margin:0 0 18px">' +
-    '<p style="margin:0 0 8px"><strong>' + esc(t.bestelling) + " " + esc(o.id) + "</strong></p>" +
-    (regels ? '<table style="width:100%;border-collapse:collapse;font-size:14px">' + regels +
-      (o.shippingCost ? '<tr><td style="padding:6px 0">' + esc(t.verzending) + '</td><td style="padding:6px 0;text-align:right">' + esc(euro(o.shippingCost)) + "</td></tr>" : "") +
-      '<tr><td style="padding:6px 0"><strong>' + esc(t.totaal) + '</strong></td><td style="padding:6px 0;text-align:right"><strong>' + esc(euro(o.amount)) + "</strong></td></tr>" +
-      (o.openBijLevering > 0 ? '<tr><td style="padding:6px 0">' + esc(t.bijLevering) + '</td><td style="padding:6px 0;text-align:right">' + esc(euro(o.openBijLevering)) + "</td></tr>" : "") +
-      "</table>" : "") +
-    '<p style="margin:12px 0 0;font-size:14px;color:#555">' + adresRegels(o).map(esc).join("<br>") + "</p></div>" +
-    '<p style="margin:0;color:#555">' + esc(t.groet) + "<br>Team " + esc(w.naam) + '<br><a href="' + esc(w.site) + '" style="color:' + w.kleur + '">' + esc(w.site.replace(/^https?:\/\//, "")) + "</a></p></div>";
+    '<tr><td style="' + cel + '"><span style="color:#6b7280">' + esc(i.quantity) + " ×</span> " + esc(i.name) + '</td><td style="' + cel + ';text-align:right;white-space:nowrap;padding-left:12px">' + esc(euro((Number(i.price) || 0) * (Number(i.quantity) || 1))) + "</td></tr>").join("");
+  const som = (naam, bedrag, vet) => '<tr><td style="padding:8px 0 0;font-size:14px;color:' + (vet ? "#111827;font-weight:700" : "#6b7280") + '">' + esc(naam) + '</td><td style="padding:8px 0 0;font-size:14px;text-align:right;white-space:nowrap;color:' + (vet ? "#111827;font-weight:700" : "#6b7280") + '">' + esc(bedrag) + "</td></tr>";
+  // De volgcode staat in de kaart; de losse regel "Volgcode: ..." hoeft er dan niet nog eens te staan.
+  const tekst = alineas.filter((a) => !(volgcode && String(a).startsWith(t.volgcode + ":")));
+  const knopHtml = (k) => '<table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td style="border-radius:10px;background:' + w.kleur + '"><a href="' + esc(k.url) + '" style="display:inline-block;padding:13px 26px;' + lettertype + ';font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;border-radius:10px">' + esc(k.tekst) + " &rarr;</a></td></tr></table>";
+  const volgKaart = volgcode
+    ? '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:6px 0 24px;border:1px solid #e5e7eb;border-radius:14px;background:#fafbfc"><tr><td style="padding:20px 22px">' +
+      '<div style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#6b7280;font-weight:600;margin:0 0 6px">' + esc(t.volgcode) + "</div>" +
+      '<div style="font-family:SFMono-Regular,Consolas,\'Liberation Mono\',Menlo,monospace;font-size:19px;font-weight:700;color:#111827;letter-spacing:.02em;word-break:break-all;margin:0' + (knop ? " 0 16px" : "") + '">' + esc(volgcode) + "</div>" +
+      (knop ? knopHtml(knop) : "") + "</td></tr></table>"
+    : knop ? '<div style="margin:6px 0 24px">' + knopHtml(knop) + "</div>" : "";
+  return '<div style="margin:0;padding:28px 12px;background:#f3f4f6;' + lettertype + '">' +
+    '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:580px;margin:0 auto;background:#ffffff;border-radius:18px;overflow:hidden;border:1px solid #e5e7eb">' +
+    '<tr><td style="background:' + w.kleur + ';padding:22px 32px;' + lettertype + ';font-size:17px;font-weight:700;letter-spacing:-.01em;color:#ffffff">' + esc(w.naam) + "</td></tr>" +
+    '<tr><td style="padding:34px 32px 8px;' + lettertype + ';color:#1f2933">' +
+    '<h1 style="margin:0 0 18px;font-size:24px;line-height:1.25;font-weight:700;letter-spacing:-.02em;color:#111827">' + esc(titel) + "</h1>" +
+    tekst.map((a) => '<p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#374151">' + esc(a).replace(/\n/g, "<br>") + "</p>").join("") +
+    volgKaart +
+    '<div style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#6b7280;font-weight:600;margin:8px 0 2px">' + esc(t.bestelling) + " " + esc(o.id) + "</div>" +
+    (regels ? '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse">' + regels +
+      (o.shippingCost ? som(t.verzending, euro(o.shippingCost)) : "") + som(t.totaal, euro(o.amount), true) +
+      (o.openBijLevering > 0 ? som(t.bijLevering, euro(o.openBijLevering)) : "") + "</table>" : "") +
+    '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:22px 0 0"><tr><td style="padding:16px 18px;background:#f9fafb;border-radius:12px;font-size:14px;line-height:1.55;color:#4b5563">' + adresRegels(o).map(esc).join("<br>") + "</td></tr></table>" +
+    "</td></tr>" +
+    '<tr><td style="padding:26px 32px 30px;' + lettertype + ';font-size:14px;line-height:1.6;color:#6b7280">' + esc(t.groet) + '<br><span style="color:#111827;font-weight:600">Team ' + esc(w.naam) + "</span></td></tr>" +
+    '<tr><td style="padding:18px 32px;border-top:1px solid #eceef1;background:#fafbfc;' + lettertype + ';font-size:12.5px;color:#9ca3af"><a href="' + esc(w.site) + '" style="color:#6b7280;text-decoration:none;font-weight:600">' + esc(w.site.replace(/^https?:\/\//, "")) + "</a></td></tr>" +
+    "</table></div>";
 }
 function platteTekst(alineas, o, knop) {
   const t = woorden(o);
@@ -613,7 +634,10 @@ function maakMail(o, soort, vrij) {
     titel = onderwerp;
     alineas = t.split(/\n{2,}/);
   } else throw new Error("Onbekend soort mail");
-  return { winkel: winkelVan(o), aan: o.customerEmail, onderwerp, html: opmaak(titel, alineas, o, knop), tekst: platteTekst(alineas, o, knop) };
+  // Bij een verzendbericht komt de volgcode in een eigen kaart (niet als de "code" zelf al een link is).
+  const code = String(o.trackTrace || "").trim();
+  const volgcode = soort === "verzonden" && code && !/^https?:\/\//i.test(code) ? code : "";
+  return { winkel: winkelVan(o), aan: o.customerEmail, onderwerp, html: opmaak(titel, alineas, o, knop, volgcode), tekst: platteTekst(alineas, o, knop) };
 }
 
 function meldingMail(o, aan) {

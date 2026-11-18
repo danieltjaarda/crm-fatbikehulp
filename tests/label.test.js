@@ -87,14 +87,15 @@ test("van aanvraag tot volgcode: bot pakt één keer op, betaallink gaat naar de
   assert.deepStrictEqual(await label.leesPdf("ORD-1", op.id), pdf);
   assert.strictEqual(await label.leesPdf("ORD-1", "een-ander-label"), null);
   assert.strictEqual(await label.bewaarPdf("ORD-2", "label-0001", Buffer.from("<html>geen pdf").toString("base64")), false, "alleen een echte pdf wordt bewaard");
-  // De order gaat op Verzonden en de klant krijgt één keer het verzendbericht met de volglink.
+  // De order gaat op Verzonden; de klant wordt niet vanzelf gemaild (dat gaat met de knop Tracking mailen).
   const w = JSON.parse(opslag["crm:orders"]["ORD-1"]);
   assert.strictEqual(w.trackTrace, "JVGL0612345678"); assert.strictEqual(w.verzendstatus, "verzonden");
-  assert.strictEqual(k.klantMail, "verstuurd"); assert.strictEqual(mails.length, 1);
-  assert.strictEqual(mails[0].to, "jan@example.com"); assert.match(mails[0].html, /tracktrace\/JVGL0612345678\/8501AB/);
-  assert.strictEqual(w.mails[0].soort, "verzonden"); assert.strictEqual(w.mails[0].automatisch, true);
-  assert.strictEqual(await label.mailKlant("ORD-1"), "had al een verzendbericht");
-  assert.match(pushes[1].titel, /klaar/); assert.match(pushes[1].tekst, /verzendbericht gekregen/);
+  assert.strictEqual(mails.length, 0, "geen automatische mail"); assert.strictEqual(w.mails, undefined);
+  assert.match(pushes[1].titel, /klaar/); assert.match(pushes[1].tekst, /nog niet gemaild/);
+  // De mail die de knop verstuurt: volgcode in een eigen kaart, knop naar DHL, en de losse regel "Volgcode: ..." alleen in de platte tekst.
+  const m = lib.maakMail(await lib.eenOrder("ORD-1"), "verzonden");
+  assert.match(m.html, /tracktrace\/JVGL0612345678\/8501AB/); assert.match(m.html, />JVGL0612345678</); assert.match(m.html, /Volg je pakket/);
+  assert.ok(!m.html.includes("Volgcode: JVGL")); assert.match(m.tekst, /Volgcode: JVGL0612345678/);
   await assert.rejects(label.meld({ orderId: "ORD-1", id: op.id, status: "mislukt" }), /al klaar/);
   // Alles staat in het logboek, in volgorde.
   const log = await lib.leesLog("ORD-1");
@@ -102,23 +103,21 @@ test("van aanvraag tot volgcode: bot pakt één keer op, betaallink gaat naar de
     "DHL-label aangevraagd: Pakket tot 5 kg, thuisbezorgen, naar 8501AB 12 a",
     "DHL-formulier ingevuld, betaallink van € 6,55 naar de telefoon gestuurd",
     "DHL-label betaald en gemaakt (Pakket tot 5 kg, thuisbezorgen, € 6,55), volgcode JVGL0612345678",
-    "Volgcode JVGL0612345678 ingevuld en status op Verzonden gezet",
-    "Verzendbericht gemaild naar jan@example.com"
+    "Volgcode JVGL0612345678 ingevuld en status op Verzonden gezet"
   ]);
-  assert.strictEqual(log[2].pdf, op.id); assert.strictEqual(log[2].door, "bot"); assert.strictEqual(log[4].door, "automatisch");
+  assert.strictEqual(log[2].pdf, op.id); assert.strictEqual(log[2].door, "bot"); assert.strictEqual(log[3].door, "automatisch");
   // Daarna mag er een nieuw label voor dezelfde order worden gemaakt; het eerste label blijft bewaard.
   assert.strictEqual((await label.vraagAan(order(), { formaat: "XSMALL", bezorging: "punt" })).status, "wacht");
   assert.deepStrictEqual(await label.leesPdf("ORD-1", op.id), pdf);
 });
 
-test("zonder volgcode: geen status Verzonden en geen mail naar de klant", async () => {
+test("zonder volgcode: de status blijft staan", async () => {
   opslag.orders = JSON.stringify([{ ...order({ id: "ORD-9" }), amount: 20, status: "betaald" }]);
   await label.vraagAan(order({ id: "ORD-9" }), { formaat: "SMALL" });
   const op = (await label.voorBot()).opdrachten.find((x) => x.orderId === "ORD-9");
   await label.meld({ orderId: "ORD-9", id: op.id, status: "betalen", betaalUrl: "https://my.dhlecommerce.nl/payment/start?paymentId=x", bedrag: 6.55 });
-  const voor = mails.length;
   const k = await label.meld({ orderId: "ORD-9", id: op.id, status: "klaar", trackTrace: "" });
-  assert.strictEqual(k.klantMail, "geen volgcode"); assert.strictEqual(mails.length, voor);
+  assert.strictEqual(k.status, "klaar"); assert.strictEqual(mails.length, 0);
   assert.strictEqual((opslag["crm:orders"] || {})["ORD-9"], undefined);
   assert.match((await logTeksten("ORD-9")).pop(), /met de hand/);
 });

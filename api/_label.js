@@ -2,8 +2,8 @@
 // (hash `crm:labels`, de lopende of laatste per order) en de bot op de pc in de werkplaats
 // pakt die op. De bot vult het formulier van DHL in tot aan de betaling en meldt de
 // betaallink terug; die gaat als pushmelding (Seintje) naar de telefoon. Na het betalen
-// stuurt de bot de volgcode en het label (pdf) terug. Dan gaat de order op Verzonden en
-// krijgt de klant meteen het verzendbericht.
+// stuurt de bot de volgcode en het label (pdf) terug en gaat de order op Verzonden. De klant
+// krijgt de tracking pas als jij op "Tracking mailen" klikt.
 //
 // Niets gaat verloren: elke stap komt in het logboek van de order (`crm:log:<order>`),
 // en elk label blijft als pdf bewaard (`crm:labelpdf:<order>:<label>`), ook als er later
@@ -12,7 +12,7 @@
 //   LABEL_BOT_SLEUTEL   geheime sleutel waarmee de bot zich meldt (minstens 24 tekens);
 //                       zonder staat het maken van labels uit
 const crypto = require("node:crypto");
-const { kv, opslagAan, pasAan, eenOrder, winkelVan, WINKELS, mailAan, maakMail, verstuur, logMail, logboek } = require("./_lib");
+const { kv, opslagAan, pasAan, winkelVan, WINKELS, logboek } = require("./_lib");
 const seintje = require("./_seintje");
 
 // De pakketformaten van DHL voor particulieren (my.dhlecommerce.nl); de sleutel is die van DHL.
@@ -207,26 +207,9 @@ async function leesPdf(orderId, labelId) {
 function euro(n) { return "€ " + (Number(n) || 0).toFixed(2).replace(".", ","); }
 
 /**
- * Het verzendbericht naar de klant zodra het label er is. Eén keer per order: is er al
- * een verzendbericht gestuurd, dan niet nog eens. Geeft terug wat er is gebeurd.
- */
-async function mailKlant(orderId) {
-  try {
-    const o = await eenOrder(orderId);
-    if (!o) return "order niet gevonden";
-    if (!mailAan(winkelVan(o))) return "mailen staat uit voor " + WINKELS[winkelVan(o)].naam;
-    if ((o.mails || []).some((m) => m.soort === "verzonden")) return "had al een verzendbericht";
-    const mail = maakMail(o, "verzonden");
-    await verstuur(mail);
-    await logMail(orderId, { soort: "verzonden", aan: mail.aan, onderwerp: mail.onderwerp, automatisch: true });
-    return "verstuurd";
-  } catch (e) { return "mislukt: " + e.message; }
-}
-
-/**
  * De bot meldt de voortgang. Bij "betalen" gaat de betaallink als pushmelding naar de
- * telefoon. Bij "klaar" wordt het label bewaard, komt de volgcode bij de order, gaat de
- * order op Verzonden en krijgt de klant het verzendbericht.
+ * telefoon. Bij "klaar" wordt het label bewaard, komt de volgcode bij de order en gaat de
+ * order op Verzonden. De klant mailen gebeurt daarna met de hand (knop "Tracking mailen").
  */
 async function meld(invoer) {
   const { orderId, id, status } = invoer || {};
@@ -257,13 +240,11 @@ async function meld(invoer) {
     if (job.trackTrace) {
       await pasAan(orderId, { trackTrace: job.trackTrace, verzendstatus: "verzonden" });
       await logboek(orderId, "Volgcode " + job.trackTrace + " ingevuld en status op Verzonden gezet", { door: "automatisch" });
-      job.klantMail = await mailKlant(orderId);
-      if (job.klantMail !== "verstuurd") await logboek(orderId, "Verzendbericht niet automatisch verstuurd: " + job.klantMail, { door: "automatisch" });
     } else {
-      job.klantMail = "geen volgcode";
-      await logboek(orderId, "Geen volgcode gevonden: status en verzendbericht moeten met de hand", { door: "automatisch" });
+      await logboek(orderId, "Geen volgcode gevonden: vul de volgcode en de status met de hand in", { door: "automatisch" });
     }
-    push = { bron: naam, titel: "DHL-label is klaar", tekst: wie + " (" + job.orderId + ")" + (job.trackTrace ? "\nVolgcode " + job.trackTrace : "\nVolgcode niet gevonden: vul hem zelf in.") + (job.klantMail === "verstuurd" ? "\nDe klant heeft het verzendbericht gekregen." : "\nDe klant is nog niet gemaild.") };
+    // De klant wordt niet vanzelf gemaild: dat gaat met de knop "Tracking mailen" bij het label.
+    push = { bron: naam, titel: "DHL-label is klaar", tekst: wie + " (" + job.orderId + ")" + (job.trackTrace ? "\nVolgcode " + job.trackTrace : "\nVolgcode niet gevonden: vul hem zelf in.") + "\nDe klant is nog niet gemaild." };
   } else {
     job.fout = tekst(invoer.fout, 300);
     delete job.betaalUrl;
@@ -274,4 +255,4 @@ async function meld(invoer) {
   return publiek(await bewaar(job));
 }
 
-module.exports = { FORMATEN, BEZORGING, LOPEND, labelsAan, isBot, splitsHuisnummer, ontvanger, metVerloop, publiek, alle, lees, vraagAan, annuleer, voorBot, meld, bewaarPdf, leesPdf, mailKlant, vraagPrint, leesPrint, meldPrint };
+module.exports = { FORMATEN, BEZORGING, LOPEND, labelsAan, isBot, splitsHuisnummer, ontvanger, metVerloop, publiek, alle, lees, vraagAan, annuleer, voorBot, meld, bewaarPdf, leesPdf, vraagPrint, leesPrint, meldPrint };
