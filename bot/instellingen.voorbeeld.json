@@ -1,0 +1,30 @@
+{
+  "crmUrl": "https://fatbikehulp-crm.vercel.app",
+  "sleutel": "dezelfde waarde als LABEL_BOT_SLEUTEL in Vercel (minstens 24 tekens)",
+  "zichtbaar": false,
+  "interval": 8,
+  "afzender": {
+    "standaard": {
+      "voornaam": "Voornaam",
+      "achternaam": "Achternaam",
+      "bedrijf": "Fatbikehulp",
+      "postcode": "1234AB",
+      "huisnummer": "1",
+      "toevoeging": "",
+      "email": "info@fatbikehulp.nl",
+      "telefoon": "",
+      "inlevercode": false
+    },
+    "deskna": {
+      "voornaam": "Voornaam",
+      "achternaam": "Achternaam",
+      "bedrijf": "Deskna",
+      "postcode": "1234AB",
+      "huisnummer": "1",
+      "toevoeging": "",
+      "email": "info@deskna.nl",
+      "telefoon": "",
+      "inlevercode": false
+    }
+  }
+}

@@ -29,4 +29,13 @@ Live: https://fatbikehulp-crm.vercel.app (Vercel-project `fatbikehulp-crm`, team
   Optioneel: `MAIL_VAN`, `MAIL_GEBRUIKER`, `MAIL_MELDINGEN`.
 - `api/cron.js` loopt elke 5 minuten en stuurt nieuwe betaalde bestellingen één keer een bevestiging.
 
+- DHL-label: in een order kies je het formaat (envelop, brievenbuspakket, pakket tot 5/10/20 kg) en thuisbezorgen of
+  DHL ServicePoint. De CRM legt een opdracht klaar (hash `crm:labels`); de bot in `bot/` (draait op de Windows-pc)
+  vult het formulier op my.dhlecommerce.nl in tot aan de betaling en meldt de betaallink. Die komt via Seintje als
+  pushmelding op de telefoon; tik erop en betaal met iDEAL. De bot betaalt zelf nooit. Na het betalen zet hij de
+  volgcode bij de order en mailt DHL het label naar het afzenderadres. Alleen Nederland.
+  Aanzetten: `LABEL_BOT_SLEUTEL` (minstens 24 tekens) in Vercel, dezelfde waarde als `sleutel` in
+  `bot/instellingen.json` (voorbeeld: `bot/instellingen.voorbeeld.json`, met het afzenderadres per winkel).
+  Bot starten: `bot/start.cmd`. Proefronde zonder CRM en zonder betalen: `node bot.js --proef` in `bot/`.
+
 Testen: `npm test`. Deployen: `vercel deploy --prod`.

@@ -1,0 +1,1 @@
+{"name":"fatbikehulp-dhl-bot","version":"1.0.0","private":true,"description":"Maakt DHL-verzendlabels voor bestellingen uit de CRM","scripts":{"start":"node bot.js"},"engines":{"node":">=22"},"dependencies":{"playwright":"^1.65.1"}}

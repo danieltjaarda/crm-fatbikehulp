@@ -3,3 +3,7 @@ node_modules
 .env*
 # Klantgegevens uit het oude CRM: alleen meedeployen, niet in git
 data/
+# DHL-labelbot: sleutel, afzenderadres en wat DHL teruggeeft blijven op de pc
+bot/instellingen.json
+bot/labels/
+bot/bot.log

@@ -78,7 +78,7 @@ const datum = (s) => { const d = new Date(s); return isNaN(d) ? "" : d.toLocaleD
 const tijd = (s) => { const d = new Date(s); return isNaN(d) ? "" : d.toLocaleString("nl-NL", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }); };
 const STATUS = { nieuw: "Te verzenden", verwerkt: "Verwerkt", verzonden: "Verzonden", afgeleverd: "Afgeleverd", geannuleerd: "Geannuleerd" };
 const MAILNAAM = { bevestiging: "Bevestiging", verzonden: "Verzendbericht", vrij: "Eigen bericht" };
-let staat = { orders: [], winkels: {}, meldingen: [], opslagAan: true, filter: "nieuw", winkel: "alle", zoek: "", open: null, fout: "" };
+let staat = { orders: [], winkels: {}, meldingen: [], opslagAan: true, filter: "nieuw", winkel: "alle", zoek: "", open: null, fout: "", labels: {}, labelAan: false, formaten: {}, bezorging: {} };
 
 // Winkel van een order en of er voor die winkel gemaild kan worden.
 const winkelVan = (o) => (o && staat.winkels[o.winkel] ? o.winkel : "fatbikehulp");
@@ -129,7 +129,78 @@ async function laad() {
     const j = await api("/api/orders");
     Object.assign(staat, j, { fout: "" });
   } catch (e) { if (e.message === "Niet ingelogd") return; staat.fout = e.message; }
+  await laadLabels();
   teken();
+}
+
+// ---------- DHL-label ----------
+// De CRM legt een opdracht klaar; de bot op de pc vult het formulier van DHL in en
+// stuurt de betaallink naar de telefoon (Seintje). Hier is te zien hoe ver hij is.
+const LABEL_LOPEND = ["wacht", "bezig", "betalen"];
+let labelTimer = null;
+async function laadLabels() {
+  try { const j = await api("/api/label"); staat.labels = j.labels || {}; staat.labelAan = !!j.aan; staat.formaten = j.formaten || {}; staat.bezorging = j.bezorging || {}; }
+  catch (e) { /* labels zijn bijzaak: de rest van de CRM werkt gewoon door */ }
+}
+function labelBlok(o) {
+  if (!staat.labelAan) return '<h3>DHL-label</h3><p class="log" style="margin:0">Labels maken staat nog uit (de bot is nog niet gekoppeld).</p>';
+  const j = staat.labels[o.id];
+  const s = j ? j.status : "";
+  const wat = j && staat.formaten[j.formaat] ? staat.formaten[j.formaat].naam : "";
+  let kop = "";
+  if (s === "wacht") kop = '<div class="melding">Wacht op de bot… (' + esc(wat) + ")" + (Date.now() - Date.parse(j.aangemaakt) > 60000 ? "<br>De bot heeft de opdracht nog niet opgepakt. Staat de pc aan en draait de bot?" : "") + "</div>";
+  else if (s === "bezig") kop = '<div class="melding">De bot vult het formulier van DHL in… (' + esc(wat) + ")</div>";
+  else if (s === "betalen") kop = '<div class="melding">Klaar om te betalen: <b>' + esc(euro(j.bedrag)) + "</b> voor " + esc(wat) + '. De melding staat op je telefoon.</div><p style="margin:0 0 10px"><a class="knop" style="text-decoration:none;display:inline-block" href="' + esc(j.betaalUrl) + '" target="_blank" rel="noopener noreferrer">Hier betalen bij DHL</a></p>';
+  else if (s === "klaar") kop = '<div class="melding" style="background:var(--groenbg);color:var(--groen)">Label gemaakt op ' + esc(tijd(j.bijgewerkt)) + (j.trackTrace ? " · volgcode " + esc(j.trackTrace) : "") + ". Het label staat in je mail van DHL.</div>";
+  else if (s === "mislukt") kop = '<div class="melding fout">Label maken is mislukt: ' + esc(j.fout || "onbekende fout") + "</div>";
+  else if (s === "verlopen") kop = '<div class="melding">De betaallink is verlopen zonder betaling. Er is geen label gemaakt.</div>';
+  else if (s === "geannuleerd") kop = '<div class="melding">Het label is geannuleerd.</div>';
+  if (LABEL_LOPEND.includes(s)) return "<h3>DHL-label</h3>" + kop + '<button class="knop licht" id="l-stop">Annuleren</button>';
+  const kies = (id, opties, gekozen) => '<select id="' + id + '">' + opties.map(([k, n]) => '<option value="' + esc(k) + '"' + (k === gekozen ? " selected" : "") + ">" + esc(n) + "</option>").join("") + "</select>";
+  return "<h3>DHL-label</h3>" + kop +
+    '<div class="twee"><div class="veld"><label for="l-formaat">Formaat</label>' + kies("l-formaat", Object.entries(staat.formaten).map(([k, f]) => [k, f.naam + " (" + f.max + ")"]), "SMALL") + "</div>" +
+    '<div class="veld"><label for="l-bezorging">Bezorgen</label>' + kies("l-bezorging", Object.entries(staat.bezorging), o.parcelShop && o.parcelShop.name ? "punt" : "deur") + "</div></div>" +
+    '<button class="knop" id="l-maak">' + (s === "klaar" ? "Nog een DHL-label maken" : "DHL-label maken") + "</button>" +
+    '<p class="log">De bot vult alles in bij DHL. Je krijgt een melding op je telefoon om te betalen.</p>';
+}
+function tekenLabel() {
+  const o = staat.orders.find((x) => x.id === staat.open);
+  const el = $("#labelblok");
+  if (!o || !el) return;
+  // Is het label klaar, dan staat de volgcode al bij de order: ook in het formulier zetten.
+  const j = staat.labels[o.id];
+  if (j && j.status === "klaar" && j.trackTrace && o.trackTrace !== j.trackTrace && $("#f-tt") && !$("#f-tt").value.trim()) { o.trackTrace = j.trackTrace; $("#f-tt").value = j.trackTrace; }
+  el.innerHTML = labelBlok(o);
+  if ($("#l-maak")) $("#l-maak").onclick = () => maakLabel();
+  if ($("#l-stop")) $("#l-stop").onclick = () => stopLabel();
+  volgLabel();
+}
+// Zolang er een label loopt voor de open order elke paar tellen kijken hoe ver de bot is.
+function volgLabel() {
+  clearTimeout(labelTimer);
+  const j = staat.open && staat.labels[staat.open];
+  if (!j || !LABEL_LOPEND.includes(j.status)) return;
+  labelTimer = setTimeout(async () => { await laadLabels(); tekenLabel(); }, 4000);
+}
+async function maakLabel() {
+  const formaat = $("#l-formaat").value, bezorging = $("#l-bezorging").value;
+  const naam = (staat.formaten[formaat] || {}).naam || formaat;
+  // Eerst opslaan, zodat een net aangepast adres op het label komt.
+  if (!(await opslaan())) return;
+  const o = staat.orders.find((x) => x.id === staat.open);
+  if (!confirm("DHL-label maken voor " + (o.customerName || o.id) + "?\n" + naam + ", " + (staat.bezorging[bezorging] || bezorging).toLowerCase() + ".\nJe betaalt pas als de melding op je telefoon komt.")) return;
+  try {
+    const j = await api("/api/label", { method: "POST", body: { id: o.id, formaat, bezorging } });
+    staat.labels[o.id] = j.label; tekenLabel(); toast("De bot gaat aan de slag");
+  } catch (e) { toast(e.message); }
+}
+async function stopLabel() {
+  if (!confirm("Dit label annuleren? Heb je al betaald, dan wordt het label gewoon gemaakt.")) return;
+  try {
+    const j = await api("/api/label?id=" + encodeURIComponent(staat.open), { method: "DELETE" });
+    if (j.label) staat.labels[staat.open] = j.label;
+    tekenLabel(); toast("Geannuleerd");
+  } catch (e) { toast(e.message); }
 }
 
 function gefilterd() {
@@ -179,7 +250,7 @@ function teken() {
 }
 
 function openOrder(id) { staat.open = id; tekenPaneel(); $("#scherm").classList.add("open"); }
-function sluit() { staat.open = null; $("#scherm").classList.remove("open"); }
+function sluit() { staat.open = null; clearTimeout(labelTimer); $("#scherm").classList.remove("open"); }
 $("#scherm").onclick = (e) => { if (e.target.id === "scherm") sluit(); };
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") sluit(); });
 
@@ -203,6 +274,7 @@ function tekenPaneel() {
     '<div class="blok"><h3>Afhandeling</h3><div class="twee"><div class="veld"><label for="f-status">Status</label><select id="f-status">' +
     (s === "open" ? '<option value="" selected>Niet betaald</option>' : "") + Object.entries(STATUS).map(([k, n]) => '<option value="' + k + '"' + (k === s ? " selected" : "") + ">" + n + "</option>").join("") + "</select></div>" +
     veld("f-tt", "Volgcode of volglink", o.trackTrace || "") + '</div><div class="veld"><label for="f-not">Notitie (alleen voor jou)</label><textarea id="f-not">' + esc(o.notitie || "") + "</textarea></div></div>" +
+    '<div class="blok" id="labelblok"></div>' +
     '<div class="blok"><h3>Klant</h3>' + veld("f-naam", "Naam", o.customerName || "") + '<div class="twee">' + veld("f-mail", "E-mail", o.customerEmail || "", "email") + veld("f-tel", "Telefoon", o.customerPhone || "", "tel") + "</div>" +
     '<div class="drie">' + veld("f-str", "Straat", a.street || a.streetAndNumber || "") + veld("f-nr", "Huisnummer", a.houseNumber || "") + '</div><div class="twee">' + veld("f-pc", "Postcode", a.postalCode || "") + veld("f-plaats", "Plaats", a.city || "") + "</div></div>" +
     '<div class="blok"><div class="acties"><button class="knop" id="opslaan">Opslaan</button><button class="knop licht" id="verberg">' + (o.verborgen ? "Terugzetten in de lijst" : "Verbergen uit de lijst") + "</button></div></div>" +
@@ -215,6 +287,7 @@ function tekenPaneel() {
   $("#opslaan").onclick = () => opslaan();
   $("#verberg").onclick = () => stuur({ verborgen: !o.verborgen }, o.verborgen ? "Teruggezet" : "Verborgen");
   document.querySelectorAll("[data-mail]").forEach((b) => (b.onclick = () => mail(b.dataset.mail, b)));
+  tekenLabel();
 }
 
 // Wat het oude CRM (tot 14 okt 2026) over deze order wist: alleen ter informatie.

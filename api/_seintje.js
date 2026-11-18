@@ -28,18 +28,23 @@ function bericht(o) {
   };
 }
 
-async function stuur(o) {
-  const url = String(process.env.SEINTJE_URL || "").trim();
-  if (!url) return false;
-  const b = bericht(o);
-  const r = await fetch(url, {
+/** Eén losse pushmelding. url = waar de melding heen gaat als je erop tikt; prioriteit "hoog" of leeg. */
+async function stuurMelding({ bron, titel, tekst, url, prioriteit }) {
+  const hook = String(process.env.SEINTJE_URL || "").trim();
+  if (!hook) return false;
+  const r = await fetch(hook, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ bron: (WINKELS[winkelVan(o)] || {}).naam || winkelVan(o), titel: b.titel, tekst: b.tekst, url: CRM_URL }),
+    body: JSON.stringify({ bron, titel, tekst, url: url || CRM_URL, prioriteit: prioriteit || "normaal" }),
     signal: AbortSignal.timeout(4000)
   });
   if (!r.ok) throw new Error("Seintje gaf " + r.status);
   return true;
+}
+
+async function stuur(o) {
+  const b = bericht(o);
+  return stuurMelding({ bron: (WINKELS[winkelVan(o)] || {}).naam || winkelVan(o), titel: b.titel, tekst: b.tekst, url: CRM_URL });
 }
 
 /**
@@ -72,4 +77,4 @@ async function meldNieuwe(orders) {
   return { gemeld, mislukt };
 }
 
-module.exports = { bericht, stuur, meldNieuwe };
+module.exports = { bericht, stuur, stuurMelding, meldNieuwe };
