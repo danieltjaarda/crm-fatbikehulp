@@ -151,16 +151,18 @@ function labelBlok(o) {
   if (s === "wacht") kop = '<div class="melding">Wacht op de bot… (' + esc(wat) + ")" + (Date.now() - Date.parse(j.aangemaakt) > 60000 ? "<br>De bot heeft de opdracht nog niet opgepakt. Staat de pc aan en draait de bot?" : "") + "</div>";
   else if (s === "bezig") kop = '<div class="melding">De bot vult het formulier van DHL in… (' + esc(wat) + ")</div>";
   else if (s === "betalen") kop = '<div class="melding">Klaar om te betalen: <b>' + esc(euro(j.bedrag)) + "</b> voor " + esc(wat) + '. De melding staat op je telefoon.</div><p style="margin:0 0 10px"><a class="knop" style="text-decoration:none;display:inline-block" href="' + esc(j.betaalUrl) + '" target="_blank" rel="noopener noreferrer">Hier betalen bij DHL</a></p>';
-  else if (s === "klaar") kop = '<div class="melding" style="background:var(--groenbg);color:var(--groen)">Label gemaakt op ' + esc(tijd(j.bijgewerkt)) + (j.trackTrace ? " · volgcode " + esc(j.trackTrace) : "") + ". Het label staat in je mail van DHL.</div>";
+  else if (s === "klaar") kop = '<div class="melding" style="background:var(--groenbg);color:var(--groen)">Label gemaakt op ' + esc(tijd(j.bijgewerkt)) + (j.trackTrace ? " · volgcode " + esc(j.trackTrace) : "") + (j.heeftPdf ? "." : ". Het label staat in je mail van DHL.") + "</div>" +
+    (j.heeftPdf ? '<p style="margin:0 0 12px"><a class="knop" style="text-decoration:none;display:inline-block" href="/api/label?pdf=' + encodeURIComponent(o.id) + '" target="_blank" rel="noopener">Label openen en printen</a></p>' : "");
   else if (s === "mislukt") kop = '<div class="melding fout">Label maken is mislukt: ' + esc(j.fout || "onbekende fout") + "</div>";
   else if (s === "verlopen") kop = '<div class="melding">De betaallink is verlopen zonder betaling. Er is geen label gemaakt.</div>';
   else if (s === "geannuleerd") kop = '<div class="melding">Het label is geannuleerd.</div>';
-  if (LABEL_LOPEND.includes(s)) return "<h3>DHL-label</h3>" + kop + '<button class="knop licht" id="l-stop">Annuleren</button>';
+  const ververs = '<button class="knop licht" id="l-ververs">Vernieuwen</button>';
+  if (LABEL_LOPEND.includes(s)) return "<h3>DHL-label</h3>" + kop + '<div class="acties"><button class="knop licht" id="l-stop">Annuleren</button>' + ververs + "</div>";
   const kies = (id, opties, gekozen) => '<select id="' + id + '">' + opties.map(([k, n]) => '<option value="' + esc(k) + '"' + (k === gekozen ? " selected" : "") + ">" + esc(n) + "</option>").join("") + "</select>";
   return "<h3>DHL-label</h3>" + kop +
     '<div class="twee"><div class="veld"><label for="l-formaat">Formaat</label>' + kies("l-formaat", Object.entries(staat.formaten).map(([k, f]) => [k, f.naam + " (" + f.max + ")"]), "SMALL") + "</div>" +
     '<div class="veld"><label for="l-bezorging">Bezorgen</label>' + kies("l-bezorging", Object.entries(staat.bezorging), o.parcelShop && o.parcelShop.name ? "punt" : "deur") + "</div></div>" +
-    '<button class="knop" id="l-maak">' + (s === "klaar" ? "Nog een DHL-label maken" : "DHL-label maken") + "</button>" +
+    '<div class="acties"><button class="knop' + (s === "klaar" ? " licht" : "") + '" id="l-maak">' + (s === "klaar" ? "Nog een DHL-label maken" : "DHL-label maken") + "</button>" + (j ? ververs : "") + "</div>" +
     '<p class="log">De bot vult alles in bij DHL. Je krijgt een melding op je telefoon om te betalen.</p>';
 }
 function tekenLabel() {
@@ -173,6 +175,7 @@ function tekenLabel() {
   el.innerHTML = labelBlok(o);
   if ($("#l-maak")) $("#l-maak").onclick = () => maakLabel();
   if ($("#l-stop")) $("#l-stop").onclick = () => stopLabel();
+  if ($("#l-ververs")) $("#l-ververs").onclick = async () => { await laadLabels(); tekenLabel(); toast("Bijgewerkt"); };
   volgLabel();
 }
 // Zolang er een label loopt voor de open order elke paar tellen kijken hoe ver de bot is.

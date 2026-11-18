@@ -18,6 +18,8 @@ global.fetch = async (url, opties) => {
   if (cmd === "HSET") { h[veld] = waarde; result = 1; }
   else if (cmd === "HGET") result = h[veld] === undefined ? null : h[veld];
   else if (cmd === "HGETALL") result = Object.entries(h).flat();
+  else if (cmd === "SET") { opslag[sleutel] = veld; result = "OK"; }
+  else if (cmd === "GET") result = typeof opslag[sleutel] === "string" ? opslag[sleutel] : null;
   else throw new Error("onbekend opslagcommando " + cmd);
   return { ok: true, status: 200, json: async () => ({ result }) };
 };
@@ -69,8 +71,13 @@ test("van aanvraag tot volgcode: bot pakt één keer op, betaallink gaat naar de
   assert.deepStrictEqual(pushes[0], { bron: "Fatbikehulp", titel: "DHL-label betalen € 6,55", tekst: "Pakket tot 5 kg voor Jan de Vries (ORD-1)\nTik om te betalen.", url: link, prioriteit: "hoog" });
   assert.deepStrictEqual((await label.voorBot()).wachtOpBetaling, [op.id]);
 
-  const k = await label.meld({ orderId: "ORD-1", id: op.id, status: "klaar", trackTrace: "JVGL0612345678" });
+  const pdf = Buffer.from("%PDF-1.4 proeflabel");
+  const k = await label.meld({ orderId: "ORD-1", id: op.id, status: "klaar", trackTrace: "JVGL0612345678", labelPdf: pdf.toString("base64") });
   assert.strictEqual(k.status, "klaar"); assert.strictEqual(k.betaalUrl, undefined);
+  assert.strictEqual(k.heeftPdf, true, "het label is bewaard");
+  assert.deepStrictEqual(await label.leesPdf("ORD-1"), pdf);
+  assert.strictEqual(await label.leesPdf("ORD-onbekend"), null);
+  assert.strictEqual(await label.bewaarPdf("ORD-2", Buffer.from("<html>geen pdf").toString("base64")), false, "alleen een echte pdf wordt bewaard");
   assert.strictEqual(JSON.parse(opslag["crm:orders"]["ORD-1"]).trackTrace, "JVGL0612345678");
   assert.match(pushes[1].titel, /klaar/);
   await assert.rejects(label.meld({ orderId: "ORD-1", id: op.id, status: "mislukt" }), /al klaar/);

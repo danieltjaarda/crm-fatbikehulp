@@ -213,17 +213,17 @@ async function wachtOpBetaling(sessie, opdracht, magDoor) {
     // Betaald. Het label staat als pdf klaar bij de order; daar staat de volgcode op.
     const naam = String(opdracht.orderId).replace(/[^\w-]/g, "_");
     fs.mkdirSync(MAP, { recursive: true });
-    let code = zoekVolgcode(order);
+    let code = zoekVolgcode(order), labelPdf;
     for (let i = 0; i < 12; i++) {
       try {
         const label = await haalLabel(sessie, order, naam);
-        if (label.bestand) { log(opdracht.orderId, "label bewaard:", label.bestand); code = code || label.code; break; }
+        if (label.bestand) { log(opdracht.orderId, "label bewaard:", label.bestand); code = code || label.code; labelPdf = fs.readFileSync(label.bestand).toString("base64"); break; }
       } catch (e) { log(opdracht.orderId, "label ophalen lukte even niet:", e.message); }
       await wacht(5000);
       try { order = (await haalOrder(sessie)) || order; } catch (e) { /* volgende ronde */ }
     }
     fs.writeFileSync(path.join(MAP, naam + "-" + Date.now() + ".json"), JSON.stringify(order, null, 2));
-    return { status: "klaar", trackTrace: code };
+    return { status: "klaar", trackTrace: code, labelPdf };
   }
   return { status: "verlopen" };
 }

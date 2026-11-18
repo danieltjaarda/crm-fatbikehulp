@@ -140,6 +140,21 @@ async function voorBot() {
   return { opdrachten, wachtOpBetaling };
 }
 
+// ---------- het label als pdf ----------
+const PDF_DAGEN = 60;            // zo lang blijft een label te openen
+const PDF_MAX = 900 * 1000;      // tekens base64; ruim genoeg voor één label
+/** Bewaart het label (base64 van een pdf). Geeft true als er iets is bewaard. */
+async function bewaarPdf(orderId, base64) {
+  if (typeof base64 !== "string" || !base64.startsWith("JVBERi0") || base64.length > PDF_MAX || !/^[A-Za-z0-9+/=]+$/.test(base64)) return false;
+  await kv("SET", "crm:labelpdf:" + orderId, base64, "EX", PDF_DAGEN * 24 * 3600);
+  return true;
+}
+/** Het bewaarde label als bytes, of null. */
+async function leesPdf(orderId) {
+  const v = await kv("GET", "crm:labelpdf:" + orderId);
+  return typeof v === "string" && v.startsWith("JVBERi0") ? Buffer.from(v, "base64") : null;
+}
+
 function euro(n) { return "€ " + (Number(n) || 0).toFixed(2).replace(".", ","); }
 
 /**
@@ -166,6 +181,8 @@ async function meld(invoer) {
   } else if (status === "klaar") {
     job.trackTrace = tekst(invoer.trackTrace, 60);
     delete job.betaalUrl;
+    // Het label zelf (pdf) bewaren, zodat het vanuit de order te openen en te printen is.
+    try { job.heeftPdf = await bewaarPdf(job.orderId, invoer.labelPdf); } catch (e) { job.heeftPdf = false; }
     if (job.trackTrace) await pasAan(job.orderId, { trackTrace: job.trackTrace });
     push = { bron: naam, titel: "DHL-label is klaar", tekst: wie + " (" + job.orderId + ")" + (job.trackTrace ? "\nVolgcode " + job.trackTrace : "\nHet label staat in je mail.") };
   } else {
@@ -177,4 +194,4 @@ async function meld(invoer) {
   return publiek(await bewaar(job));
 }
 
-module.exports = { FORMATEN, BEZORGING, LOPEND, labelsAan, isBot, splitsHuisnummer, ontvanger, metVerloop, publiek, alle, lees, vraagAan, annuleer, voorBot, meld };
+module.exports = { FORMATEN, BEZORGING, LOPEND, labelsAan, isBot, splitsHuisnummer, ontvanger, metVerloop, publiek, alle, lees, vraagAan, annuleer, voorBot, meld, bewaarPdf, leesPdf };
