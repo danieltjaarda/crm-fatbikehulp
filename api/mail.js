@@ -12,7 +12,10 @@ module.exports = async (req, res) => {
     const mail = maakMail(o, soort, { onderwerp, tekst });
     if (voorbeeld) return res.status(200).json({ aan: mail.aan, onderwerp: mail.onderwerp, html: mail.html });
     await verstuur(mail);
-    await logMail(id, { soort, aan: mail.aan, onderwerp: mail.onderwerp });
+    // Bij een verzendbericht ook vastleggen welke volgcode erin stond (leeg = er stond er geen in).
+    const regel = { soort, aan: mail.aan, onderwerp: mail.onderwerp };
+    if (soort === "verzonden") regel.volgcode = String(o.trackTrace || "").trim().slice(0, 300);
+    await logMail(id, regel);
     res.status(200).json({ order: await eenOrder(id) });
   } catch (e) {
     res.status(400).json({ fout: e.message || "Mail versturen mislukt" });

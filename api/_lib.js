@@ -351,7 +351,9 @@ async function logMail(id, regel) {
   const w = await wijziging(id);
   w.mails = [...(w.mails || []), { ...regel, tijd: new Date().toISOString() }].slice(-50);
   await bewaarWijziging(id, w);
-  await logboek(id, (MAILNAAM[regel.soort] || "Mail") + " gemaild naar " + regel.aan + (regel.onderwerp && regel.soort === "vrij" ? " (" + regel.onderwerp + ")" : ""), { door: regel.automatisch ? "automatisch" : "jij" });
+  // Bij een verzendbericht staat in het logboek of er een volgcode in de mail stond.
+  const metCode = regel.soort === "verzonden" && typeof regel.volgcode === "string" ? (regel.volgcode ? ", met volgcode " + regel.volgcode : ", zonder volgcode") : "";
+  await logboek(id, (MAILNAAM[regel.soort] || "Mail") + " gemaild naar " + regel.aan + (regel.onderwerp && regel.soort === "vrij" ? " (" + regel.onderwerp + ")" : "") + metCode, { door: regel.automatisch ? "automatisch" : "jij" });
 }
 
 // ---------- logboek ----------

@@ -139,6 +139,15 @@ test("printen: opdracht gaat één keer naar de bot en het resultaat komt in het
   await assert.rejects(label.meldPrint({ print: "bestaat-niet", status: "klaar" }), /bestaat niet meer/);
 });
 
+test("logboek: bij een verzendbericht staat of er een volgcode in de mail stond", async () => {
+  await lib.logMail("ORD-M", { soort: "verzonden", aan: "a@example.com", onderwerp: "x", volgcode: "3SDFC2109374617" });
+  await lib.logMail("ORD-M", { soort: "verzonden", aan: "a@example.com", onderwerp: "x", volgcode: "" });
+  await lib.logMail("ORD-M", { soort: "bevestiging", aan: "a@example.com", onderwerp: "x" });
+  assert.deepStrictEqual(await logTeksten("ORD-M"), ["Verzendbericht gemaild naar a@example.com, met volgcode 3SDFC2109374617", "Verzendbericht gemaild naar a@example.com, zonder volgcode", "Bevestiging gemaild naar a@example.com"]);
+  const mailregels = JSON.parse(opslag["crm:orders"]["ORD-M"]).mails;
+  assert.strictEqual(mailregels[0].volgcode, "3SDFC2109374617"); assert.strictEqual(mailregels[1].volgcode, ""); assert.strictEqual("volgcode" in mailregels[2], false);
+});
+
 test("logboek: wijzigingen met oude en nieuwe waarde", () => {
   const voor = { betaald: true, trackTrace: "", customerName: "Jan", notitie: "", shippingAddress: { city: "Joure", postalCode: "8501AB" } };
   const na = { verzendstatus: "verzonden", trackTrace: "JVGL1", customerName: "Jan", notitie: "bellen", verborgen: true, shippingAddress: { city: "Sneek", postalCode: "8501AB" } };

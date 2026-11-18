@@ -453,6 +453,8 @@ async function laadLabels() {
   try { const j = await api("/api/label"); staat.labels = j.labels || {}; staat.labelAan = !!j.aan; staat.formaten = j.formaten || {}; staat.bezorging = j.bezorging || {}; }
   catch (e) { /* labels zijn bijzaak: de rest van de CRM werkt gewoon door */ }
 }
+// De volgcode die bij een label hoort: die van de bot, anders die bij de bestelling is ingevuld (geen losse link).
+const labelCode = (j, o) => (j && j.trackTrace) || (o && o.trackTrace && !/^https?:\/\//i.test(String(o.trackTrace).trim()) ? String(o.trackTrace).trim() : "");
 function labelBlok(o) {
   if (!staat.labelAan) return '<h3>DHL-label</h3><p class="log" style="margin:0">Labels maken staat nog uit (de bot is nog niet gekoppeld).</p>';
   const j = staat.labels[o.id];
@@ -464,12 +466,23 @@ function labelBlok(o) {
   if (s === "wacht") kop = '<div class="melding"><span class="draai"></span>Wacht op de bot… (' + esc(wat) + ")" + (Date.now() - Date.parse(j.aangemaakt) > 60000 ? "<br>De bot heeft de opdracht nog niet opgepakt. Staat de pc aan en draait de bot?" : "") + "</div>";
   else if (s === "bezig") kop = '<div class="melding"><span class="draai"></span>De bot vult het formulier van DHL in… (' + esc(wat) + ")</div>";
   else if (s === "betalen") kop = '<div class="melding">Klaar om te betalen: <b>' + esc(euro(j.bedrag)) + "</b> voor " + esc(wat) + '. De melding staat op je telefoon.</div><p style="margin:0 0 10px"><a class="knop" href="' + esc(j.betaalUrl) + '" target="_blank" rel="noopener noreferrer">Hier betalen bij DHL</a></p>';
-  else if (s === "klaar") kop = '<div class="melding goed">Label gemaakt op ' + esc(tijd(j.bijgewerkt)) + (j.trackTrace ? " · volgcode " + esc(j.trackTrace) : " · volgcode niet gevonden, vul hem zelf in") + (j.heeftPdf ? "." : ". Het label staat in je mail van DHL.") +
-    "<br>" + (gemaild ? "De klant heeft de tracking gekregen op " + esc(tijd(gemaild.tijd)) + "." : "De klant is nog niet gemaild.") + "</div>" +
-    '<div class="acties" style="margin:0 0 14px">' +
-    (j.pdfId ? '<button class="knop" id="l-print" data-label="' + esc(j.pdfId) + '">Printen op de Zebra</button>' : "") +
-    '<button class="knop' + (gemaild ? " licht" : "") + '" id="l-mail" data-mail="verzonden"' + (kanMailen(o) ? "" : " disabled") + ">" + (gemaild ? "Tracking opnieuw mailen" : "Tracking mailen") + "</button>" +
-    (j.pdfId ? '<a class="knop licht" href="' + esc(labelLink(o.id, j.pdfId)) + '" target="_blank" rel="noopener">Label openen</a>' : "") + "</div>";
+  else if (s === "klaar") {
+    // De volgcode: wat de bot op het label las, anders wat er nu bij de bestelling is ingevuld.
+    const eigen = labelCode(j, o);
+    const code = j.trackTrace ? " · volgcode " + esc(j.trackTrace) : eigen ? " · volgcode " + esc(eigen) + " (zelf ingevuld)" : " · de bot vond geen volgcode: vul hem in bij Afhandeling";
+    // Of er bij het mailen een volgcode in stond, wordt sinds 18 nov 2026 bij de mail vastgelegd.
+    const zonderCode = gemaild && gemaild.volgcode === "";
+    const mailTekst = !gemaild ? "De klant is nog niet gemaild."
+      : gemaild.volgcode ? "De klant heeft de tracking gekregen op " + esc(tijd(gemaild.tijd)) + " (volgcode " + esc(gemaild.volgcode) + ")."
+      : zonderCode ? "De klant is gemaild op " + esc(tijd(gemaild.tijd)) + ", maar zonder volgcode."
+      : "De klant heeft het verzendbericht gekregen op " + esc(tijd(gemaild.tijd)) + ".";
+    const nogMailen = !gemaild || zonderCode;
+    kop = '<div class="melding' + (eigen ? " goed" : "") + '">Label gemaakt op ' + esc(tijd(j.bijgewerkt)) + code + (j.heeftPdf ? "." : ". Het label staat in je mail van DHL.") + "<br>" + mailTekst + "</div>" +
+      '<div class="acties" style="margin:0 0 14px">' +
+      (j.pdfId ? '<button class="knop" id="l-print" data-label="' + esc(j.pdfId) + '">Printen op de Zebra</button>' : "") +
+      '<button class="knop' + (nogMailen ? "" : " licht") + '" id="l-mail" data-mail="verzonden"' + (kanMailen(o) ? "" : " disabled") + ">" + (gemaild ? "Tracking opnieuw mailen" : "Tracking mailen") + "</button>" +
+      (j.pdfId ? '<a class="knop licht" href="' + esc(labelLink(o.id, j.pdfId)) + '" target="_blank" rel="noopener">Label openen</a>' : "") + "</div>";
+  }
   else if (s === "mislukt") kop = '<div class="melding fout">Label maken is mislukt: ' + esc(j.fout || "onbekende fout") + "</div>";
   else if (s === "verlopen") kop = '<div class="melding">De betaallink is verlopen zonder betaling. Er is geen label gemaakt.</div>';
   else if (s === "geannuleerd") kop = '<div class="melding">Het label is geannuleerd.</div>';
@@ -771,7 +784,7 @@ function paginaVerzendingen() {
     (lijst.length ? '<div class="tabelwrap"><table class="tabel rand"><thead><tr><th>Klant</th><th class="kol-m">Formaat</th><th class="kol-m">Bezorgen</th><th>Status</th><th class="kol-s">Volgcode</th><th class="kol-s">Bijgewerkt</th><th class="num">Kosten</th></tr></thead><tbody>' +
       toon.map((x) => "<tr" + (x.o ? ' class="rij" tabindex="0" data-id="' + esc(x.id) + '"' : "") + '><td class="naamkol vet">' + esc(x.o ? x.o.customerName || "Onbekend" : x.id) + '<div class="sub-s">' + esc(wanneer(x.j.bijgewerkt || x.j.aangemaakt)) + "</div></td>" +
         '<td class="kol-m">' + esc((staat.formaten[x.j.formaat] || {}).naam || x.j.formaat) + '</td><td class="kol-m zacht">' + esc(staat.bezorging[x.j.bezorging] || x.j.bezorging) + "</td><td>" + labelPil(x.j) + "</td>" +
-        '<td class="kol-s mono">' + esc(x.j.trackTrace || "") + '</td><td class="kol-s zacht">' + esc(wanneer(x.j.bijgewerkt || x.j.aangemaakt)) + '</td><td class="num">' + (x.j.bedrag ? esc(euro(x.j.bedrag)) : "") + "</td></tr>").join("") + "</tbody></table></div>" +
+        '<td class="kol-s mono">' + esc(labelCode(x.j, x.o)) + '</td><td class="kol-s zacht">' + esc(wanneer(x.j.bijgewerkt || x.j.aangemaakt)) + '</td><td class="num">' + (x.j.bedrag ? esc(euro(x.j.bedrag)) : "") + "</td></tr>").join("") + "</tbody></table></div>" +
       onderbalk(toon.length, lijst.length, lijst.length === 1 ? "label" : "labels")
       : leeg(z ? "Geen labels gevonden" : "Nog geen labels gemaakt", z ? "Probeer een andere zoekopdracht." : "Open een bestelling en kies “DHL-label maken”."));
 }
