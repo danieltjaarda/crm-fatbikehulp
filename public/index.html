@@ -6,70 +6,146 @@
 <meta name="robots" content="noindex,nofollow">
 <title>CRM Fatbikehulp, Deskna &amp; Fatbiketeile</title>
 <style>
-:root{--bg:#f4f5f7;--kaart:#fff;--tekst:#1c2430;--zacht:#667085;--lijn:#e3e6ea;--merk:#234C6A;--merk2:#1a3a52;--groen:#17803d;--groenbg:#e6f4ea;--oranje:#b25e09;--oranjebg:#fdf0dc;--paars:#5b3fc4;--paarsbg:#ece8fb;--grijsbg:#eceef1;--rood:#b42318;--roodbg:#fde8e6}
-@media (prefers-color-scheme:dark){:root{--bg:#12161c;--kaart:#1b2129;--tekst:#e8ebef;--zacht:#98a2b3;--lijn:#2c343f;--merk:#5fa3d0;--merk2:#7db8df;--groen:#5fd08a;--groenbg:#173224;--oranje:#f0b25c;--oranjebg:#3a2a12;--paars:#b3a2f5;--paarsbg:#2a2447;--grijsbg:#262d37;--rood:#ff8b80;--roodbg:#3d1b18}}
+:root{--bg:#f6f8fa;--kaart:#fff;--tekst:#0f172a;--zacht:#64748b;--lijn:#e5e7eb;--lijn2:#d1d5db;--merk:#111827;--merk2:#000;--opmerk:#fff;--accent:#635bff;--ring:rgba(99,91,255,.28);
+--groen:#0e7a43;--groenbg:#e3f6ea;--oranje:#a35200;--oranjebg:#fdf1dc;--paars:#5b3fc4;--paarsbg:#ece8fb;--grijsbg:#f1f3f5;--rood:#b42318;--roodbg:#fdeceb;
+--schaduw:0 1px 2px rgba(15,23,42,.05),0 1px 1px rgba(15,23,42,.03);--schaduw2:0 20px 50px -12px rgba(15,23,42,.28),0 0 0 1px rgba(15,23,42,.05);--zacht-uit:cubic-bezier(.22,1,.36,1)}
+@media (prefers-color-scheme:dark){:root{--bg:#0b0d10;--kaart:#14171c;--tekst:#eceef1;--zacht:#9099a6;--lijn:#242932;--lijn2:#343b47;--merk:#f4f5f6;--merk2:#fff;--opmerk:#0b0d10;--accent:#8f88ff;--ring:rgba(143,136,255,.35);
+--groen:#5fd08a;--groenbg:#12301f;--oranje:#f0b25c;--oranjebg:#33250f;--paars:#b3a2f5;--paarsbg:#262042;--grijsbg:#1c2027;--rood:#ff8b80;--roodbg:#3a1a17;
+--schaduw:0 1px 2px rgba(0,0,0,.4);--schaduw2:0 24px 60px -12px rgba(0,0,0,.7),0 0 0 1px rgba(255,255,255,.06)}}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--tekst);font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}
-button,input,select,textarea{font:inherit;color:inherit}
-.kop{display:flex;align-items:center;gap:12px;padding:14px 16px;background:var(--kaart);border-bottom:1px solid var(--lijn);position:sticky;top:0;z-index:5}
-.kop h1{font-size:17px;margin:0;flex:1}
-.wrap{max-width:1100px;margin:0 auto;padding:16px}
-.knop{background:var(--merk);color:#fff;border:0;border-radius:8px;padding:9px 14px;cursor:pointer;font-weight:600}
-@media (prefers-color-scheme:dark){.knop{color:#0d1117}}
-.knop:disabled{opacity:.5;cursor:default}
-.knop.licht{background:transparent;color:var(--tekst);border:1px solid var(--lijn);font-weight:500}
-.balk{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
-.balk input{flex:1;min-width:180px}
-input,select,textarea{background:var(--kaart);border:1px solid var(--lijn);border-radius:8px;padding:9px 10px;width:100%}
-textarea{min-height:90px;resize:vertical}
-.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
-.tab{background:var(--kaart);border:1px solid var(--lijn);border-radius:999px;padding:6px 12px;cursor:pointer;font-size:14px}
-.tab.aan{background:var(--merk);border-color:var(--merk);color:#fff}
-@media (prefers-color-scheme:dark){.tab.aan{color:#0d1117}}
-.tab b{font-weight:600;opacity:.75;margin-left:4px}
-.lijst{background:var(--kaart);border:1px solid var(--lijn);border-radius:12px;overflow:hidden}
-.rij{display:grid;grid-template-columns:96px 1fr 110px 90px;gap:10px;padding:12px 14px;border-bottom:1px solid var(--lijn);cursor:pointer;align-items:center}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--tekst);font:14.5px/1.5 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;-webkit-font-smoothing:antialiased;letter-spacing:-.003em}
+body.vast{overflow:hidden}
+button,input,select,textarea{font:inherit;color:inherit;letter-spacing:inherit}
+::selection{background:var(--ring)}
+
+/* kop */
+.kop{display:flex;align-items:center;gap:8px;padding:12px 20px;background:color-mix(in srgb,var(--kaart) 82%,transparent);backdrop-filter:saturate(180%) blur(12px);-webkit-backdrop-filter:saturate(180%) blur(12px);border-bottom:1px solid var(--lijn);position:sticky;top:0;z-index:5}
+.kop h1{font-size:15px;font-weight:650;margin:0;flex:1;letter-spacing:-.01em;display:flex;align-items:center;gap:9px}
+.kop h1::before{content:"";width:22px;height:22px;border-radius:7px;background:var(--merk);box-shadow:inset 0 0 0 5px var(--merk),inset 0 0 0 7px var(--opmerk)}
+.wrap{max-width:1080px;margin:0 auto;padding:22px 20px 60px}
+
+/* knoppen */
+.knop{position:relative;display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:36px;background:var(--merk);color:var(--opmerk);border:1px solid var(--merk);border-radius:9px;padding:7px 14px;cursor:pointer;font-weight:550;font-size:14px;line-height:1.2;white-space:nowrap;box-shadow:var(--schaduw);
+transition:background .15s,border-color .15s,box-shadow .15s,transform .08s,opacity .15s,color .15s;-webkit-tap-highlight-color:transparent;user-select:none}
+.knop:hover{background:var(--merk2);border-color:var(--merk2);box-shadow:0 2px 6px rgba(15,23,42,.16)}
+.knop:active{transform:scale(.97)}
+.knop:focus-visible,.tab:focus-visible,.rij:focus-visible{outline:0;box-shadow:0 0 0 3px var(--ring)}
+.knop:disabled{opacity:.45;cursor:not-allowed;box-shadow:none;transform:none}
+.knop.licht{background:var(--kaart);color:var(--tekst);border-color:var(--lijn2);font-weight:500}
+.knop.licht:hover{background:var(--grijsbg);border-color:var(--lijn2);box-shadow:var(--schaduw)}
+.knop.stil{background:transparent;border-color:transparent;box-shadow:none;color:var(--zacht);padding:7px 10px}
+.knop.stil:hover{background:var(--grijsbg);color:var(--tekst);box-shadow:none}
+/* laden: de tekst wordt onzichtbaar en er draait een ringetje in het midden; de knop houdt zijn breedte */
+.knop.bezig{color:transparent!important;pointer-events:none;opacity:1}
+.knop.bezig::after{content:"";position:absolute;inset:0;margin:auto;width:15px;height:15px;border-radius:50%;border:2px solid color-mix(in srgb,var(--opmerk) 35%,transparent);border-top-color:var(--opmerk);animation:draai .6s linear infinite}
+.knop.licht.bezig::after,.knop.stil.bezig::after{border-color:color-mix(in srgb,var(--tekst) 22%,transparent);border-top-color:var(--tekst)}
+.draai{display:inline-block;width:13px;height:13px;border-radius:50%;border:2px solid color-mix(in srgb,currentColor 28%,transparent);border-top-color:currentColor;animation:draai .6s linear infinite;vertical-align:-2px;margin-right:8px}
+@keyframes draai{to{transform:rotate(360deg)}}
+
+/* invoer */
+input,select,textarea{background:var(--kaart);border:1px solid var(--lijn2);border-radius:9px;padding:8px 11px;width:100%;min-height:38px;box-shadow:var(--schaduw);transition:border-color .15s,box-shadow .15s}
+input:hover,select:hover,textarea:hover{border-color:color-mix(in srgb,var(--lijn2) 60%,var(--tekst))}
+input:focus,select:focus,textarea:focus{outline:0;border-color:var(--accent);box-shadow:0 0 0 3px var(--ring)}
+input::placeholder,textarea::placeholder{color:color-mix(in srgb,var(--zacht) 75%,transparent)}
+textarea{min-height:92px;resize:vertical;line-height:1.5}
+select{appearance:none;-webkit-appearance:none;padding-right:32px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M2.5 4.5 6 8l3.5-3.5' fill='none' stroke='%2364748b' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 11px center;cursor:pointer}
+.balk{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+.balk input{flex:1;min-width:180px;min-height:42px;padding-left:38px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3E%3Ccircle cx='7' cy='7' r='4.5' fill='none' stroke='%2364748b' stroke-width='1.6'/%3E%3Cpath d='m10.5 10.5 3 3' stroke='%2364748b' stroke-width='1.6' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:13px center}
+
+/* tabs */
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+.tab{display:inline-flex;align-items:center;gap:7px;background:transparent;border:1px solid transparent;border-radius:999px;padding:6px 12px;cursor:pointer;font-size:13.5px;font-weight:500;color:var(--zacht);transition:background .15s,color .15s,border-color .15s,box-shadow .15s}
+.tab:hover{background:var(--grijsbg);color:var(--tekst)}
+.tab.aan{background:var(--kaart);border-color:var(--lijn2);color:var(--tekst);box-shadow:var(--schaduw)}
+.tab b{font-weight:600;font-size:12px;min-width:20px;text-align:center;padding:1px 6px;border-radius:999px;background:var(--grijsbg);color:var(--zacht);font-variant-numeric:tabular-nums;transition:background .15s,color .15s}
+.tab.aan b{background:var(--merk);color:var(--opmerk)}
+
+/* lijst */
+.lijst{background:var(--kaart);border:1px solid var(--lijn);border-radius:14px;overflow:hidden;box-shadow:var(--schaduw)}
+.rij{display:grid;grid-template-columns:92px 1fr 124px 96px;gap:12px;padding:13px 18px;border-bottom:1px solid var(--lijn);cursor:pointer;align-items:center;transition:background .12s}
 .rij:last-child{border-bottom:0}
-.rij:hover{background:var(--grijsbg)}
-.rij .klein{color:var(--zacht);font-size:13px}
-.rij .naam{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.rij .wat{color:var(--zacht);font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rij:hover{background:color-mix(in srgb,var(--grijsbg) 70%,transparent)}
+.rij:active{background:var(--grijsbg)}
+.rij .klein{color:var(--zacht);font-size:13px;font-variant-numeric:tabular-nums}
+.rij .naam{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;letter-spacing:-.005em}
+.rij .wat{color:var(--zacht);font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:1px}
 .rij .bedrag{text-align:right;font-variant-numeric:tabular-nums;font-weight:600}
-.pil{display:inline-block;border-radius:999px;padding:2px 9px;font-size:12.5px;font-weight:600;white-space:nowrap}
+.pil{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:3px 10px 3px 8px;font-size:12.5px;font-weight:600;white-space:nowrap;line-height:1.35}
+.pil::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor;flex:none}
 .p-nieuw{background:var(--oranjebg);color:var(--oranje)}.p-verwerkt{background:var(--paarsbg);color:var(--paars)}
 .p-verzonden,.p-afgeleverd{background:var(--groenbg);color:var(--groen)}.p-geannuleerd{background:var(--roodbg);color:var(--rood)}
 .p-open{background:var(--grijsbg);color:var(--zacht)}
-.winkel{display:inline-block;border-radius:5px;padding:1px 6px;font-size:11.5px;font-weight:700;letter-spacing:.02em;margin-left:6px;vertical-align:1px}
-.w-fatbikehulp{background:var(--merk);color:#fff}.w-deskna{background:#111;color:#fff}.w-fatbiketeile{background:var(--oranje);color:#fff}
-@media (prefers-color-scheme:dark){.w-fatbikehulp,.w-fatbiketeile{color:#0d1117}.w-deskna{background:#e8ebef;color:#111}}
-.oud{font-size:13px;color:var(--zacht)}.oud summary{cursor:pointer;margin-top:8px;color:var(--tekst)}.oud ul{margin:6px 0 0;padding-left:18px}.oud li{margin:2px 0}.oud a{color:var(--merk)}
+.winkel{display:inline-block;border-radius:6px;padding:1px 7px;font-size:11px;font-weight:650;letter-spacing:.02em;margin-left:7px;vertical-align:1.5px;border:1px solid var(--lijn2);color:var(--zacht);background:var(--kaart)}
+.w-deskna{background:var(--merk);border-color:var(--merk);color:var(--opmerk)}.w-fatbiketeile{background:var(--oranjebg);border-color:transparent;color:var(--oranje)}
+.oud{font-size:13px;color:var(--zacht)}.oud summary{cursor:pointer;margin-top:8px;color:var(--tekst)}.oud ul{margin:6px 0 0;padding-left:18px}.oud li{margin:2px 0}.oud a{color:var(--accent)}
 .levering{color:var(--oranje);font-size:12.5px;font-weight:600}
-.leeg{padding:36px 16px;text-align:center;color:var(--zacht)}
-.melding{background:var(--oranjebg);color:var(--oranje);border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:14px}
-.fout{background:var(--roodbg);color:var(--rood)}
-.scherm{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;z-index:10;justify-content:flex-end}
-.scherm.open{display:flex}
-.paneel{background:var(--bg);width:min(560px,100%);height:100%;overflow:auto;padding:16px}
-.paneel h2{font-size:18px;margin:0}
-.blok{background:var(--kaart);border:1px solid var(--lijn);border-radius:12px;padding:14px;margin-top:12px}
-.blok h3{font-size:13px;text-transform:uppercase;letter-spacing:.04em;color:var(--zacht);margin:0 0 10px}
-.veld{margin-bottom:10px}.veld label{display:block;font-size:13px;color:var(--zacht);margin-bottom:4px}
-.twee{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.drie{display:grid;grid-template-columns:2fr 1fr;gap:10px}
-.item{display:flex;justify-content:space-between;gap:10px;padding:5px 0;font-size:14px}
+.leeg{padding:56px 16px;text-align:center;color:var(--zacht)}
+.melding{background:var(--oranjebg);color:var(--oranje);border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:13.5px;line-height:1.5;animation:op .3s var(--zacht-uit)}
+.melding.fout,.fout{background:var(--roodbg);color:var(--rood)}
+.melding.goed{background:var(--groenbg);color:var(--groen)}
+
+/* laden van de lijst: grijze balkjes met een glans */
+.skelet{height:12px;border-radius:6px;background:linear-gradient(90deg,var(--grijsbg) 25%,color-mix(in srgb,var(--grijsbg) 40%,var(--kaart)) 50%,var(--grijsbg) 75%);background-size:200% 100%;animation:glans 1.2s linear infinite}
+.rij.leegrij{cursor:default;pointer-events:none}
+@keyframes glans{to{background-position:-200% 0}}
+
+/* het orderpaneel schuift van rechts in beeld */
+.scherm{position:fixed;inset:0;z-index:10;display:flex;justify-content:flex-end;background:rgba(15,23,42,0);visibility:hidden;transition:background .28s ease,visibility 0s linear .32s;backdrop-filter:blur(0)}
+.scherm.open{background:rgba(15,23,42,.42);visibility:visible;transition:background .28s ease,visibility 0s;backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px)}
+.paneel{background:var(--bg);width:min(580px,100%);height:100%;overflow:auto;overscroll-behavior:contain;padding:18px 18px 40px;box-shadow:var(--schaduw2);transform:translateX(104%);transition:transform .32s cubic-bezier(.4,0,1,1);will-change:transform}
+.scherm.open .paneel{transform:none;transition:transform .42s var(--zacht-uit)}
+.paneel h2{font-size:18px;margin:0;letter-spacing:-.015em;font-weight:650}
+.paneel.vers .blok{animation:op .45s var(--zacht-uit) backwards}
+.paneel.vers .blok:nth-child(2){animation-delay:.04s}.paneel.vers .blok:nth-child(3){animation-delay:.08s}.paneel.vers .blok:nth-child(4){animation-delay:.12s}.paneel.vers .blok:nth-child(5){animation-delay:.16s}.paneel.vers .blok:nth-child(n+6){animation-delay:.2s}
+@keyframes op{from{opacity:0;transform:translateY(8px)}}
+.blok{background:var(--kaart);border:1px solid var(--lijn);border-radius:14px;padding:16px;margin-top:12px;box-shadow:var(--schaduw)}
+.blok h3{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--zacht);margin:0 0 12px;font-weight:600}
+.veld{margin-bottom:12px}.veld label{display:block;font-size:13px;color:var(--zacht);margin-bottom:5px;font-weight:500}
+.twee{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.drie{display:grid;grid-template-columns:2fr 1fr;gap:12px}
+.item{display:flex;justify-content:space-between;gap:10px;padding:6px 0;font-size:14px}
+.item+.item{border-top:1px solid var(--lijn)}
 .item span:last-child{font-variant-numeric:tabular-nums;white-space:nowrap}
-.acties{display:flex;gap:8px;flex-wrap:wrap}
-.log{font-size:13px;color:var(--zacht);margin:8px 0 0;padding:0;list-style:none}
-.login{max-width:340px;margin:14vh auto 0;background:var(--kaart);border:1px solid var(--lijn);border-radius:14px;padding:22px}
-.login h1{font-size:19px;margin:0 0 14px}
-.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--tekst);color:var(--bg);padding:10px 16px;border-radius:10px;z-index:30;display:none;max-width:90vw}
-@media (max-width:640px){.rij{grid-template-columns:1fr auto;gap:4px 10px}.rij .datum{order:3}.rij .status{order:4;text-align:right}.twee{grid-template-columns:1fr}}
+.acties{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.log{font-size:13px;color:var(--zacht);margin:10px 0 0;padding:0;list-style:none}
+/* logboek als tijdlijn */
+.tijdlijn{list-style:none;margin:0;padding:0;font-size:13.5px}
+.tijdlijn li{position:relative;padding:0 0 14px 20px;color:var(--tekst)}
+.tijdlijn li::before{content:"";position:absolute;left:3px;top:7px;width:7px;height:7px;border-radius:50%;background:var(--kaart);border:2px solid var(--lijn2)}
+.tijdlijn li::after{content:"";position:absolute;left:6.5px;top:18px;bottom:-4px;width:1px;background:var(--lijn)}
+.tijdlijn li:last-child{padding-bottom:0}.tijdlijn li:last-child::after{display:none}
+.tijdlijn li:first-child::before{border-color:var(--accent);background:var(--accent)}
+.tijdlijn small{display:block;color:var(--zacht);font-size:12px;margin-top:1px}
+.tijdlijn a{color:var(--accent);font-weight:500;text-decoration:none}.tijdlijn a:hover{text-decoration:underline}
+
+/* inloggen */
+.login{max-width:360px;margin:16vh auto 0;background:var(--kaart);border:1px solid var(--lijn);border-radius:18px;padding:28px;box-shadow:var(--schaduw2);animation:op .5s var(--zacht-uit)}
+.login h1{font-size:19px;margin:0 0 4px;letter-spacing:-.02em;font-weight:650}
+.login p{margin:0 0 18px;color:var(--zacht);font-size:13.5px}
+
+/* melding onderin */
+.toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,16px);opacity:0;pointer-events:none;background:var(--merk);color:var(--opmerk);padding:10px 16px;border-radius:11px;z-index:40;max-width:90vw;font-size:14px;font-weight:500;box-shadow:var(--schaduw2);transition:opacity .2s,transform .32s var(--zacht-uit)}
+.toast.toon{opacity:1;transform:translate(-50%,0)}
+
+/* vraagvenster (in plaats van het kale venster van de browser) */
+.vraag{position:fixed;inset:0;z-index:30;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(15,23,42,0);visibility:hidden;transition:background .2s,visibility 0s linear .2s}
+.vraag.open{background:rgba(15,23,42,.45);visibility:visible;transition:background .2s,visibility 0s}
+.vraagdoos{background:var(--kaart);border-radius:16px;padding:22px;width:min(420px,100%);box-shadow:var(--schaduw2);transform:translateY(10px) scale(.96);opacity:0;transition:transform .28s var(--zacht-uit),opacity .18s}
+.vraag.open .vraagdoos{transform:none;opacity:1}
+.vraagdoos h4{margin:0 0 6px;font-size:16px;font-weight:650;letter-spacing:-.01em}
+.vraagdoos p{margin:0 0 20px;color:var(--zacht);white-space:pre-line;font-size:14px}
+.vraagdoos .acties{justify-content:flex-end}
+
+@media (max-width:640px){.wrap{padding:16px 14px 50px}.kop{padding:10px 14px}.rij{grid-template-columns:1fr auto;gap:4px 10px;padding:12px 14px}.rij .datum{order:3}.rij .status{order:4;text-align:right}.twee,.drie{grid-template-columns:1fr}.paneel{padding:14px 14px 40px}}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
 </style>
 </head>
 <body>
 <div id="app"></div>
 <div class="scherm" id="scherm"><div class="paneel" id="paneel"></div></div>
 <div class="toast" id="toast"></div>
+<div class="vraag" id="vraag"><div class="vraagdoos" role="dialog" aria-modal="true"><h4 id="vraag-kop"></h4><p id="vraag-tekst"></p><div class="acties"><button class="knop licht" id="vraag-nee">Annuleren</button><button class="knop" id="vraag-ja">Doorgaan</button></div></div></div>
 <script>
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -102,7 +178,41 @@ async function api(pad, opties) {
   if (!r.ok) throw new Error(j.fout || "Er ging iets mis");
   return j;
 }
-function toast(t) { const el = $("#toast"); el.textContent = t; el.style.display = "block"; clearTimeout(toast.t); toast.t = setTimeout(() => (el.style.display = "none"), 3200); }
+function toast(t) { const el = $("#toast"); el.textContent = t; el.classList.add("toon"); clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.remove("toon"), 3200); }
+
+// ---------- laden en vragen ----------
+// Knoppen die bezig zijn krijgen een draaiend ringetje. Omdat het scherm tussendoor opnieuw
+// wordt getekend, onthouden we welke knoppen (als CSS-selector) bezig zijn en zetten we
+// het ringetje na elke tekenronde terug.
+const bezig = new Set();
+function markeer() {
+  document.querySelectorAll(".knop.bezig").forEach((k) => { k.classList.remove("bezig"); if (k.dataset.wasUit !== "1") k.disabled = false; });
+  bezig.forEach((sel) => document.querySelectorAll(sel).forEach((k) => { k.dataset.wasUit = k.disabled ? "1" : ""; k.classList.add("bezig"); k.disabled = true; }));
+}
+async function lader(sel, fn) {
+  if (bezig.has(sel)) return;
+  bezig.add(sel); markeer();
+  try { return await fn(); } finally { bezig.delete(sel); markeer(); }
+}
+// Eigen vraagvenster in plaats van het kale venster van de browser. Geeft true bij doorgaan.
+let sluitVraag = null;
+function vraag(kop, tekst, ja) {
+  return new Promise((klaar) => {
+    const v = $("#vraag");
+    $("#vraag-kop").textContent = kop; $("#vraag-tekst").textContent = tekst || ""; $("#vraag-ja").textContent = ja || "Doorgaan";
+    sluitVraag = (antwoord) => { v.classList.remove("open"); sluitVraag = null; klaar(antwoord); };
+    $("#vraag-ja").onclick = () => sluitVraag(true);
+    $("#vraag-nee").onclick = () => sluitVraag(false);
+    v.onclick = (e) => { if (e.target === v) sluitVraag(false); };
+    v.classList.add("open");
+    setTimeout(() => $("#vraag-ja").focus(), 60);
+  });
+}
+// Eerste keer laden: grijze regels op de plek van de bestellingen.
+function toonSkelet() {
+  $("#app").innerHTML = '<div class="kop"><h1>CRM</h1></div><div class="wrap"><div class="lijst">' + [62, 48, 70, 40, 56, 66].map((b) =>
+    '<div class="rij leegrij"><div class="skelet" style="width:54px"></div><div><div class="skelet" style="width:' + b + '%"></div><div class="skelet" style="width:' + (b - 22) + '%;margin-top:9px;height:10px"></div></div><div class="skelet" style="width:86px;height:20px;border-radius:999px"></div><div class="skelet" style="width:52px;margin-left:auto"></div></div>').join("") + "</div></div>";
+}
 
 // De status die de CRM toont: wat jij hebt gezet, anders afgeleid van de site.
 function statusVan(o) {
@@ -114,13 +224,16 @@ function statusVan(o) {
 function pil(o) { const s = statusVan(o); return '<span class="pil p-' + s + '">' + (s === "open" ? "Niet betaald" : STATUS[s]) + "</span>"; }
 
 function toonLogin(fout) {
-  $("#scherm").classList.remove("open");
-  $("#app").innerHTML = '<form class="login" id="lf"><h1>CRM Fatbikehulp, Deskna &amp; Fatbiketeile</h1><div class="veld"><label for="ww">Wachtwoord</label><input id="ww" type="password" autocomplete="current-password" autofocus></div>' +
+  $("#scherm").classList.remove("open"); document.body.classList.remove("vast");
+  $("#app").innerHTML = '<form class="login" id="lf"><h1>CRM</h1><p>Fatbikehulp, Deskna &amp; Fatbiketeile</p><div class="veld"><label for="ww">Wachtwoord</label><input id="ww" type="password" autocomplete="current-password" autofocus></div>' +
     (fout ? '<div class="melding fout">' + esc(fout) + "</div>" : "") + '<button class="knop" style="width:100%">Inloggen</button></form>';
   $("#lf").onsubmit = async (e) => {
     e.preventDefault();
-    try { await api("/api/login", { method: "POST", body: { wachtwoord: $("#ww").value } }); laad(); }
-    catch (err) { toonLogin(err.message); }
+    const wachtwoord = $("#ww").value;
+    lader("#lf .knop", async () => {
+      try { await api("/api/login", { method: "POST", body: { wachtwoord } }); toonSkelet(); await laad(); }
+      catch (err) { toonLogin(err.message); }
+    });
   };
 }
 
@@ -148,12 +261,12 @@ function labelBlok(o) {
   const s = j ? j.status : "";
   const wat = j && staat.formaten[j.formaat] ? staat.formaten[j.formaat].naam : "";
   let kop = "";
-  if (s === "wacht") kop = '<div class="melding">Wacht op de bot… (' + esc(wat) + ")" + (Date.now() - Date.parse(j.aangemaakt) > 60000 ? "<br>De bot heeft de opdracht nog niet opgepakt. Staat de pc aan en draait de bot?" : "") + "</div>";
-  else if (s === "bezig") kop = '<div class="melding">De bot vult het formulier van DHL in… (' + esc(wat) + ")</div>";
-  else if (s === "betalen") kop = '<div class="melding">Klaar om te betalen: <b>' + esc(euro(j.bedrag)) + "</b> voor " + esc(wat) + '. De melding staat op je telefoon.</div><p style="margin:0 0 10px"><a class="knop" style="text-decoration:none;display:inline-block" href="' + esc(j.betaalUrl) + '" target="_blank" rel="noopener noreferrer">Hier betalen bij DHL</a></p>';
-  else if (s === "klaar") kop = '<div class="melding" style="background:var(--groenbg);color:var(--groen)">Label gemaakt op ' + esc(tijd(j.bijgewerkt)) + (j.trackTrace ? " · volgcode " + esc(j.trackTrace) : " · volgcode niet gevonden, vul hem zelf in") + (j.heeftPdf ? "." : ". Het label staat in je mail van DHL.") +
+  if (s === "wacht") kop = '<div class="melding"><span class="draai"></span>Wacht op de bot… (' + esc(wat) + ")" + (Date.now() - Date.parse(j.aangemaakt) > 60000 ? "<br>De bot heeft de opdracht nog niet opgepakt. Staat de pc aan en draait de bot?" : "") + "</div>";
+  else if (s === "bezig") kop = '<div class="melding"><span class="draai"></span>De bot vult het formulier van DHL in… (' + esc(wat) + ")</div>";
+  else if (s === "betalen") kop = '<div class="melding">Klaar om te betalen: <b>' + esc(euro(j.bedrag)) + "</b> voor " + esc(wat) + '. De melding staat op je telefoon.</div><p style="margin:0 0 10px"><a class="knop" style="text-decoration:none" href="' + esc(j.betaalUrl) + '" target="_blank" rel="noopener noreferrer">Hier betalen bij DHL</a></p>';
+  else if (s === "klaar") kop = '<div class="melding goed">Label gemaakt op ' + esc(tijd(j.bijgewerkt)) + (j.trackTrace ? " · volgcode " + esc(j.trackTrace) : " · volgcode niet gevonden, vul hem zelf in") + (j.heeftPdf ? "." : ". Het label staat in je mail van DHL.") +
     (j.klantMail === "verstuurd" ? "<br>De klant heeft het verzendbericht gekregen." : j.klantMail ? "<br>De klant is niet automatisch gemaild (" + esc(j.klantMail) + ")." : "") + "</div>" +
-    (j.pdfId ? '<p style="margin:0 0 12px"><a class="knop" style="text-decoration:none;display:inline-block" href="' + esc(labelLink(o.id, j.pdfId)) + '" target="_blank" rel="noopener">Label openen en printen</a></p>' : "");
+    (j.pdfId ? '<p style="margin:0 0 12px"><a class="knop" style="text-decoration:none" href="' + esc(labelLink(o.id, j.pdfId)) + '" target="_blank" rel="noopener">Label openen en printen</a></p>' : "");
   else if (s === "mislukt") kop = '<div class="melding fout">Label maken is mislukt: ' + esc(j.fout || "onbekende fout") + "</div>";
   else if (s === "verlopen") kop = '<div class="melding">De betaallink is verlopen zonder betaling. Er is geen label gemaakt.</div>';
   else if (s === "geannuleerd") kop = '<div class="melding">Het label is geannuleerd.</div>';
@@ -176,7 +289,8 @@ function tekenLabel() {
   el.innerHTML = labelBlok(o);
   if ($("#l-maak")) $("#l-maak").onclick = () => maakLabel();
   if ($("#l-stop")) $("#l-stop").onclick = () => stopLabel();
-  if ($("#l-ververs")) $("#l-ververs").onclick = async () => { await laad(); if (staat.open) { tekenPaneel(); laadLog(); } toast("Bijgewerkt"); };
+  if ($("#l-ververs")) $("#l-ververs").onclick = () => lader("#l-ververs", async () => { await laad(); if (staat.open) { tekenPaneel(); await laadLog(); } toast("Bijgewerkt"); });
+  markeer();
   volgLabel();
 }
 // Zolang er een label loopt voor de open order elke paar tellen kijken hoe ver de bot is.
@@ -205,8 +319,9 @@ function tekenLog() {
   if (!el) return;
   const regels = staat.logVan === staat.open ? staat.log || [] : null;
   el.innerHTML = "<h3>Logboek</h3>" + (regels === null ? '<p class="log" style="margin:0">Laden…</p>' : !regels.length ? '<p class="log" style="margin:0">Nog niets gebeurd met deze bestelling in de CRM.</p>' :
-    '<ul class="log" style="margin:0">' + regels.slice().reverse().map((r) => '<li style="padding:4px 0;border-bottom:1px solid var(--lijn)"><span style="white-space:nowrap">' + esc(tijd(r.tijd)) + "</span> · " + esc(r.tekst) +
-      (DOOR[r.door] ? " <i>(" + DOOR[r.door] + ")</i>" : "") + (r.pdf ? ' · <a style="color:var(--merk)" href="' + esc(labelLink(staat.open, r.pdf)) + '" target="_blank" rel="noopener">label</a>' : "") + "</li>").join("") + "</ul>");
+    '<ul class="tijdlijn">' + regels.slice().reverse().map((r) => "<li>" + esc(r.tekst) +
+      (r.pdf ? ' · <a href="' + esc(labelLink(staat.open, r.pdf)) + '" target="_blank" rel="noopener">label openen</a>' : "") +
+      "<small>" + esc(tijd(r.tijd)) + (DOOR[r.door] ? " · " + DOOR[r.door] : "") + "</small></li>").join("") + "</ul>");
 }
 async function laadLog() {
   const id = staat.open;
@@ -217,22 +332,26 @@ async function laadLog() {
 async function maakLabel() {
   const formaat = $("#l-formaat").value, bezorging = $("#l-bezorging").value;
   const naam = (staat.formaten[formaat] || {}).naam || formaat;
-  // Eerst opslaan, zodat een net aangepast adres op het label komt.
-  if (!(await opslaan())) return;
   const o = staat.orders.find((x) => x.id === staat.open);
-  if (!confirm("DHL-label maken voor " + (o.customerName || o.id) + "?\n" + naam + ", " + (staat.bezorging[bezorging] || bezorging).toLowerCase() + ".\nJe betaalt pas als de melding op je telefoon komt.")) return;
-  try {
-    const j = await api("/api/label", { method: "POST", body: { id: o.id, formaat, bezorging } });
-    staat.labels[o.id] = j.label; tekenLabel(); toast("De bot gaat aan de slag"); laadLog();
-  } catch (e) { toast(e.message); }
+  if (!(await vraag("DHL-label maken?", naam + ", " + (staat.bezorging[bezorging] || bezorging).toLowerCase() + ", voor " + ($("#f-naam").value || o.id) + ".\nJe betaalt pas als de melding op je telefoon komt.", "Label maken"))) return;
+  await lader("#l-maak", async () => {
+    // Eerst opslaan, zodat een net aangepast adres op het label komt.
+    if (!(await opslaan())) return;
+    try {
+      const j = await api("/api/label", { method: "POST", body: { id: o.id, formaat, bezorging } });
+      staat.labels[o.id] = j.label; tekenLabel(); toast("De bot gaat aan de slag"); laadLog();
+    } catch (e) { toast(e.message); }
+  });
 }
 async function stopLabel() {
-  if (!confirm("Dit label annuleren? Heb je al betaald, dan wordt het label gewoon gemaakt.")) return;
-  try {
-    const j = await api("/api/label?id=" + encodeURIComponent(staat.open), { method: "DELETE" });
-    if (j.label) staat.labels[staat.open] = j.label;
-    tekenLabel(); toast("Geannuleerd"); laadLog();
-  } catch (e) { toast(e.message); }
+  if (!(await vraag("Dit label annuleren?", "Heb je al betaald, dan wordt het label gewoon gemaakt.", "Label annuleren"))) return;
+  await lader("#l-stop", async () => {
+    try {
+      const j = await api("/api/label?id=" + encodeURIComponent(staat.open), { method: "DELETE" });
+      if (j.label) staat.labels[staat.open] = j.label;
+      tekenLabel(); toast("Geannuleerd"); laadLog();
+    } catch (e) { toast(e.message); }
+  });
 }
 
 function gefilterd() {
@@ -259,7 +378,7 @@ function teken() {
   const winkels = Object.entries(staat.winkels).filter(([, w]) => w.gekoppeld);
   const zonderMail = winkels.filter(([, w]) => !w.mailAan).map(([, w]) => w.naam);
   $("#app").innerHTML =
-    '<div class="kop"><h1>CRM</h1><button class="knop licht" id="ververs">Verversen</button><button class="knop licht" id="uit">Uitloggen</button></div><div class="wrap">' +
+    '<div class="kop"><h1>CRM</h1><button class="knop licht" id="ververs">Verversen</button><button class="knop stil" id="uit">Uitloggen</button></div><div class="wrap">' +
     (staat.fout ? '<div class="melding fout">' + esc(staat.fout) + "</div>" : "") +
     (staat.meldingen || []).map((m) => '<div class="melding fout">' + esc(m) + "</div>").join("") +
     (!staat.opslagAan ? '<div class="melding fout">De opslag is nog niet gekoppeld. Je kunt bestellingen bekijken, maar nog niet bewerken.</div>' : "") +
@@ -274,17 +393,28 @@ function teken() {
       (o.openBijLevering > 0 ? '<div class="levering">' + esc(euro(o.openBijLevering)) + " open</div>" : "") + "</div></div>").join("")
       : '<div class="leeg">' + (staat.orders.length ? "Geen bestellingen in deze weergave." : "Nog geen bestellingen.") + "</div>") + "</div></div>";
   document.querySelectorAll("[data-w]").forEach((b) => (b.onclick = () => { staat.winkel = b.dataset.w; teken(); }));
-  $("#ververs").onclick = () => laad().then(() => toast("Bijgewerkt"));
-  $("#uit").onclick = async () => { await api("/api/login", { method: "DELETE" }); toonLogin(); };
+  $("#ververs").onclick = () => lader("#ververs", async () => { await laad(); toast("Bijgewerkt"); });
+  $("#uit").onclick = () => lader("#uit", async () => { await api("/api/login", { method: "DELETE" }); toonLogin(); });
+  markeer();
   $("#zoek").oninput = (e) => { staat.zoek = e.target.value; const p = e.target.selectionStart; teken(); const z = $("#zoek"); z.focus(); z.setSelectionRange(p, p); };
   document.querySelectorAll("[data-f]").forEach((b) => (b.onclick = () => { staat.filter = b.dataset.f; teken(); }));
   document.querySelectorAll(".rij").forEach((r) => (r.onclick = () => openOrder(r.dataset.id)));
 }
 
-function openOrder(id) { staat.open = id; tekenPaneel(); $("#scherm").classList.add("open"); laadLog(); }
-function sluit() { staat.open = null; clearTimeout(labelTimer); $("#scherm").classList.remove("open"); }
+// Het paneel schuift van rechts in beeld; de blokken komen er kort na elkaar in.
+let versTimer = null;
+function openOrder(id) {
+  staat.open = id; tekenPaneel();
+  const p = $("#paneel");
+  p.scrollTop = 0; p.classList.add("vers");
+  clearTimeout(versTimer); versTimer = setTimeout(() => p.classList.remove("vers"), 800);
+  $("#scherm").classList.add("open"); document.body.classList.add("vast");
+  laadLog();
+}
+// Bij het sluiten blijft de inhoud staan tot het paneel uit beeld is geschoven.
+function sluit() { staat.open = null; clearTimeout(labelTimer); $("#scherm").classList.remove("open"); document.body.classList.remove("vast"); }
 $("#scherm").onclick = (e) => { if (e.target.id === "scherm") sluit(); };
-document.addEventListener("keydown", (e) => { if (e.key === "Escape") sluit(); });
+document.addEventListener("keydown", (e) => { if (e.key !== "Escape") return; if (sluitVraag) sluitVraag(false); else sluit(); });
 
 function tekenPaneel() {
   const o = staat.orders.find((x) => x.id === staat.open);
@@ -316,12 +446,13 @@ function tekenPaneel() {
     '<button class="knop licht" data-mail="vrij"' + uit + ">Eigen bericht sturen</button>" +
     (o.mails && o.mails.length ? '<ul class="log">' + o.mails.slice().reverse().map((m) => "<li>" + esc(tijd(m.tijd)) + " · " + esc(MAILNAAM[m.soort] || m.soort) + (m.automatisch ? " (automatisch)" : "") + " naar " + esc(m.aan) + "</li>").join("") + "</ul>" : '<p class="log">Nog geen mail verstuurd vanuit de CRM.</p>') + "</div>";
   $("#dicht").onclick = sluit;
-  $("#opslaan").onclick = () => opslaan();
-  $("#verberg").onclick = () => stuur({ verborgen: !o.verborgen }, o.verborgen ? "Teruggezet" : "Verborgen");
+  $("#opslaan").onclick = () => lader("#opslaan", opslaan);
+  $("#verberg").onclick = () => lader("#verberg", () => stuur({ verborgen: !o.verborgen }, o.verborgen ? "Teruggezet" : "Verborgen"));
   document.querySelectorAll("[data-mail]").forEach((b) => (b.onclick = () => mail(b.dataset.mail, b)));
   $("#paneel").insertAdjacentHTML("beforeend", '<div class="blok" id="logblok"></div>');
   tekenLabel();
   tekenLog();
+  markeer();
 }
 
 // Wat het oude CRM (tot 14 okt 2026) over deze order wist: alleen ter informatie.
@@ -365,18 +496,26 @@ function opslaan() { return stuur(formulier(), "Opgeslagen"); }
 
 async function mail(soort, knop) {
   const o = staat.orders.find((x) => x.id === staat.open);
-  // Eerst opslaan, zodat een net ingevulde volgcode of e-mailadres in de mail zit.
-  if (!(await opslaan())) return;
+  // Onderwerp en bericht nu al vastpakken: bij het opslaan wordt het paneel opnieuw getekend.
   const body = { id: o.id, soort, onderwerp: $("#m-ond") ? $("#m-ond").value : "", tekst: $("#m-tekst") ? $("#m-tekst").value : "" };
-  if (soort === "verzonden" && !$("#f-tt").value.trim() && !confirm("Er is geen volgcode ingevuld. Toch het verzendbericht sturen?")) return;
-  if (!confirm(MAILNAAM[soort] + " sturen naar " + $("#f-mail").value + "?")) return;
-  try {
-    const j = await api("/api/mail", { method: "POST", body });
-    staat.orders = staat.orders.map((x) => (x.id === j.order.id ? j.order : x));
-    tekenPaneel(); toast("Mail verstuurd"); laadLog();
-  } catch (e) { toast(e.message); }
+  const zonderCode = soort === "verzonden" && !$("#f-tt").value.trim();
+  if (!(await vraag(MAILNAAM[soort] + " sturen?", "Naar " + $("#f-mail").value + "." + (zonderCode ? "\nLet op: er is geen volgcode ingevuld." : ""), "Mail sturen"))) return;
+  await lader('[data-mail="' + soort + '"]', async () => {
+    // Eerst opslaan, zodat een net ingevulde volgcode of e-mailadres in de mail zit.
+    if (!(await opslaan())) return;
+    try {
+      const j = await api("/api/mail", { method: "POST", body });
+      staat.orders = staat.orders.map((x) => (x.id === j.order.id ? j.order : x));
+      tekenPaneel(); toast("Mail verstuurd"); laadLog();
+    } catch (e) {
+      // Het eigen bericht terugzetten, zodat het niet opnieuw getypt hoeft te worden.
+      if ($("#m-ond")) $("#m-ond").value = body.onderwerp; if ($("#m-tekst")) $("#m-tekst").value = body.tekst;
+      toast(e.message);
+    }
+  });
 }
 
+toonSkelet();
 api("/api/login").then((j) => (j.ingelogd ? laad() : toonLogin())).catch(() => toonLogin());
 </script>
 </body>

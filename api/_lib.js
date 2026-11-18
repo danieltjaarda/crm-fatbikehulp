@@ -368,13 +368,16 @@ async function leesLog(id) {
   return regels.map((r) => { try { return typeof r === "string" ? JSON.parse(r) : r; } catch (e) { return null; } }).filter(Boolean);
 }
 const VELDNAAM = { verzendstatus: "Status", trackTrace: "Volgcode", customerName: "Naam", customerEmail: "E-mail", customerPhone: "Telefoon", street: "Straat", houseNumber: "Huisnummer", postalCode: "Postcode", city: "Plaats", country: "Land" };
-const STATUSNAAM = { nieuw: "Te verzenden", verwerkt: "Verwerkt", verzonden: "Verzonden", afgeleverd: "Afgeleverd", geannuleerd: "Geannuleerd" };
+const STATUSNAAM = { open: "Niet betaald", nieuw: "Te verzenden", verwerkt: "Verwerkt", verzonden: "Verzonden", afgeleverd: "Afgeleverd", geannuleerd: "Geannuleerd" };
 /** Wat er tussen twee versies van een order is veranderd, als leesbare regels ("Status: Te verzenden → Verzonden"). */
 function verschillen(voor, na) {
   const uit = [];
   const toon = (k, v) => (k === "verzendstatus" ? STATUSNAAM[v] || "" : String(v == null ? "" : v).trim()) || "leeg";
   const vergelijk = (k, a, b) => { if (String(a == null ? "" : a).trim() !== String(b == null ? "" : b).trim()) uit.push(VELDNAAM[k] + ": " + toon(k, a) + " → " + toon(k, b)); };
-  for (const k of ["verzendstatus", "trackTrace", "customerName", "customerEmail", "customerPhone"]) vergelijk(k, voor[k], na[k]);
+  // De status zoals het scherm hem toont: zonder eigen keuze is dat de status die uit de webshop volgt.
+  const status = (o) => o.verzendstatus || (!o.betaald ? "open" : ["verzonden", "afgeleverd", "verwerkt", "geannuleerd"].includes(o.fulfillmentStatus) ? o.fulfillmentStatus : "nieuw");
+  if (status(voor) !== status(na)) uit.push("Status: " + (STATUSNAAM[status(voor)] || status(voor)) + " → " + (STATUSNAAM[status(na)] || status(na)));
+  for (const k of ["trackTrace", "customerName", "customerEmail", "customerPhone"]) vergelijk(k, voor[k], na[k]);
   for (const k of ADRESVELDEN) vergelijk(k, (voor.shippingAddress || {})[k], (na.shippingAddress || {})[k]);
   if (String(voor.notitie || "").trim() !== String(na.notitie || "").trim()) uit.push("Notitie aangepast");
   if (!!voor.verborgen !== !!na.verborgen) uit.push(na.verborgen ? "Verborgen uit de lijst" : "Teruggezet in de lijst");

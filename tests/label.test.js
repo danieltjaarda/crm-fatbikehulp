@@ -123,7 +123,7 @@ test("zonder volgcode: geen status Verzonden en geen mail naar de klant", async 
 });
 
 test("logboek: wijzigingen met oude en nieuwe waarde", () => {
-  const voor = { verzendstatus: "nieuw", trackTrace: "", customerName: "Jan", notitie: "", shippingAddress: { city: "Joure", postalCode: "8501AB" } };
+  const voor = { betaald: true, trackTrace: "", customerName: "Jan", notitie: "", shippingAddress: { city: "Joure", postalCode: "8501AB" } };
   const na = { verzendstatus: "verzonden", trackTrace: "JVGL1", customerName: "Jan", notitie: "bellen", verborgen: true, shippingAddress: { city: "Sneek", postalCode: "8501AB" } };
   assert.deepStrictEqual(lib.verschillen(voor, na), ["Status: Te verzenden → Verzonden", "Volgcode: leeg → JVGL1", "Plaats: Joure → Sneek", "Notitie aangepast", "Verborgen uit de lijst"]);
   assert.deepStrictEqual(lib.verschillen(voor, voor), []);
