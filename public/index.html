@@ -266,7 +266,7 @@ function labelBlok(o) {
   else if (s === "betalen") kop = '<div class="melding">Klaar om te betalen: <b>' + esc(euro(j.bedrag)) + "</b> voor " + esc(wat) + '. De melding staat op je telefoon.</div><p style="margin:0 0 10px"><a class="knop" style="text-decoration:none" href="' + esc(j.betaalUrl) + '" target="_blank" rel="noopener noreferrer">Hier betalen bij DHL</a></p>';
   else if (s === "klaar") kop = '<div class="melding goed">Label gemaakt op ' + esc(tijd(j.bijgewerkt)) + (j.trackTrace ? " · volgcode " + esc(j.trackTrace) : " · volgcode niet gevonden, vul hem zelf in") + (j.heeftPdf ? "." : ". Het label staat in je mail van DHL.") +
     (j.klantMail === "verstuurd" ? "<br>De klant heeft het verzendbericht gekregen." : j.klantMail ? "<br>De klant is niet automatisch gemaild (" + esc(j.klantMail) + ")." : "") + "</div>" +
-    (j.pdfId ? '<p style="margin:0 0 12px"><a class="knop" style="text-decoration:none" href="' + esc(labelLink(o.id, j.pdfId)) + '" target="_blank" rel="noopener">Label openen en printen</a></p>' : "");
+    (j.pdfId ? '<div class="acties" style="margin:0 0 14px"><button class="knop" id="l-print" data-label="' + esc(j.pdfId) + '">Printen op de Zebra</button><a class="knop licht" style="text-decoration:none" href="' + esc(labelLink(o.id, j.pdfId)) + '" target="_blank" rel="noopener">Label openen</a></div>' : "");
   else if (s === "mislukt") kop = '<div class="melding fout">Label maken is mislukt: ' + esc(j.fout || "onbekende fout") + "</div>";
   else if (s === "verlopen") kop = '<div class="melding">De betaallink is verlopen zonder betaling. Er is geen label gemaakt.</div>';
   else if (s === "geannuleerd") kop = '<div class="melding">Het label is geannuleerd.</div>';
@@ -289,6 +289,7 @@ function tekenLabel() {
   el.innerHTML = labelBlok(o);
   if ($("#l-maak")) $("#l-maak").onclick = () => maakLabel();
   if ($("#l-stop")) $("#l-stop").onclick = () => stopLabel();
+  if ($("#l-print")) $("#l-print").onclick = () => printLabel($("#l-print").dataset.label);
   if ($("#l-ververs")) $("#l-ververs").onclick = () => lader("#l-ververs", async () => { await laad(); if (staat.open) { tekenPaneel(); await laadLog(); } toast("Bijgewerkt"); });
   markeer();
   volgLabel();
@@ -341,6 +342,21 @@ async function maakLabel() {
       const j = await api("/api/label", { method: "POST", body: { id: o.id, formaat, bezorging } });
       staat.labels[o.id] = j.label; tekenLabel(); toast("De bot gaat aan de slag"); laadLog();
     } catch (e) { toast(e.message); }
+  });
+}
+// Printen gaat via de bot op de pc waar de labelprinter aan hangt; hier wachten we op zijn antwoord.
+function printLabel(labelId) {
+  const orderId = staat.open;
+  return lader("#l-print", async () => {
+    try {
+      let p = (await api("/api/label", { method: "POST", body: { print: orderId, label: labelId } })).print;
+      for (let i = 0; i < 30 && (p.status === "wacht" || p.status === "bezig"); i++) {
+        await new Promise((r) => setTimeout(r, 2000));
+        p = (await api("/api/label?print=" + encodeURIComponent(p.id))).print;
+      }
+      toast(p.status === "klaar" ? "Het label is geprint" : p.status === "mislukt" ? "Printen mislukt: " + p.fout : "De bot reageert niet. Staat de pc aan en draait de bot?");
+    } catch (e) { toast(e.message); }
+    if (staat.open === orderId) laadLog();
   });
 }
 async function stopLabel() {

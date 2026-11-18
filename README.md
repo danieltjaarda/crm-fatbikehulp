@@ -36,6 +36,10 @@ Live: https://fatbikehulp-crm.vercel.app (Vercel-project `fatbikehulp-crm`, team
   volgcode bij de order en mailt DHL het label naar het afzenderadres. Alleen Nederland.
   Aanzetten: `LABEL_BOT_SLEUTEL` (minstens 24 tekens) in Vercel, dezelfde waarde als `sleutel` in
   `bot/instellingen.json` (voorbeeld: `bot/instellingen.voorbeeld.json`, met het afzenderadres per winkel).
+  Printen: de knop "Printen op de Zebra" bij een gemaakt label legt een printopdracht klaar; de bot snijdt het label uit
+  de pdf, zet het rechtop en print het passend op het label dat in de printer is ingesteld (Zebra ZD220, 100 × 150 mm;
+  andere printer: `printer` in `bot/instellingen.json`). Los proberen: `node bot.js --print <bestand.pdf>` in `bot/`.
+  Alles wat er met een order gebeurt staat in het logboek (`crm:log:<order>`); labels blijven bewaard als pdf.
   Bot starten: `bot/start.cmd`. Proefronde zonder CRM en zonder betalen: `node bot.js --proef` in `bot/`.
 
 Testen: `npm test`. Deployen: `vercel deploy --prod`.

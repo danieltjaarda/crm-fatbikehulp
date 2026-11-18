@@ -21,6 +21,7 @@ global.fetch = async (url, opties) => {
   if (cmd === "HSET") { h[veld] = waarde; result = 1; }
   else if (cmd === "HGET") result = h[veld] === undefined ? null : h[veld];
   else if (cmd === "HGETALL") result = Object.entries(h).flat();
+  else if (cmd === "HDEL") { delete h[veld]; result = 1; }
   else if (cmd === "SET") { opslag[sleutel] = veld; result = "OK"; }
   else if (cmd === "GET") result = typeof opslag[sleutel] === "string" ? opslag[sleutel] : null;
   else if (cmd === "RPUSH") { (opslag[sleutel] = Array.isArray(opslag[sleutel]) ? opslag[sleutel] : []).push(veld); result = opslag[sleutel].length; }
@@ -122,6 +123,23 @@ test("zonder volgcode: geen status Verzonden en geen mail naar de klant", async 
   assert.match((await logTeksten("ORD-9")).pop(), /met de hand/);
 });
 
+test("printen: opdracht gaat één keer naar de bot en het resultaat komt in het logboek", async () => {
+  await label.bewaarPdf("ORD-P", "label-0001", Buffer.from("%PDF-1.4 x").toString("base64"));
+  await assert.rejects(label.vraagPrint("ORD-P", "label-9999"), /niet bewaard/);
+  const p = await label.vraagPrint("ORD-P", "label-0001");
+  assert.strictEqual(p.status, "wacht");
+  assert.strictEqual((await label.alle())["print:" + p.id], undefined, "printopdrachten staan niet tussen de labels");
+  assert.deepStrictEqual((await label.voorBot()).printen, [{ id: p.id, orderId: "ORD-P", labelId: "label-0001" }]);
+  assert.deepStrictEqual((await label.voorBot()).printen, []);
+  assert.strictEqual((await label.leesPrint(p.id)).status, "bezig");
+  assert.strictEqual((await label.meldPrint({ print: p.id, status: "klaar" })).status, "klaar");
+  const q = await label.vraagPrint("ORD-P", "label-0001");
+  await label.voorBot();
+  assert.deepStrictEqual(await label.meldPrint({ print: q.id, status: "mislukt", fout: "printer staat uit" }), { id: q.id, status: "mislukt", fout: "printer staat uit" });
+  assert.deepStrictEqual(await logTeksten("ORD-P"), ["DHL-label naar de labelprinter gestuurd", "DHL-label geprint op de labelprinter", "DHL-label naar de labelprinter gestuurd", "Printen mislukt: printer staat uit"]);
+  await assert.rejects(label.meldPrint({ print: "bestaat-niet", status: "klaar" }), /bestaat niet meer/);
+});
+
 test("logboek: wijzigingen met oude en nieuwe waarde", () => {
   const voor = { betaald: true, trackTrace: "", customerName: "Jan", notitie: "", shippingAddress: { city: "Joure", postalCode: "8501AB" } };
   const na = { verzendstatus: "verzonden", trackTrace: "JVGL1", customerName: "Jan", notitie: "bellen", verborgen: true, shippingAddress: { city: "Sneek", postalCode: "8501AB" } };
@@ -132,7 +150,7 @@ test("logboek: wijzigingen met oude en nieuwe waarde", () => {
 test("annuleren stopt een lopend label; stilgevallen opdrachten verlopen", async () => {
   assert.strictEqual((await label.annuleer("ORD-1")).status, "geannuleerd");
   assert.match((await logTeksten("ORD-1")).pop(), /geannuleerd/);
-  assert.deepStrictEqual(await label.voorBot(), { opdrachten: [], wachtOpBetaling: [] });
+  assert.deepStrictEqual(await label.voorBot(), { opdrachten: [], wachtOpBetaling: [], printen: [] });
   const oud = new Date(Date.now() - 60 * 60 * 1000).toISOString();
   assert.strictEqual(label.metVerloop({ status: "betalen", bijgewerkt: oud }).status, "verlopen");
   assert.strictEqual(label.metVerloop({ status: "bezig", bijgewerkt: oud }).status, "mislukt");

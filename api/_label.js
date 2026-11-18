@@ -99,8 +99,40 @@ async function alle() {
   if (!opslagAan()) return {};
   const plat = (await kv("HGETALL", "crm:labels")) || [];
   const uit = {};
-  for (let i = 0; i < plat.length; i += 2) { const j = publiek(leesJob(plat[i + 1])); if (j) uit[plat[i]] = j; }
+  for (let i = 0; i < plat.length; i += 2) {
+    if (plat[i].startsWith(PRINT)) continue; // printopdrachten staan in dezelfde hash
+    const j = publiek(leesJob(plat[i + 1])); if (j) uit[plat[i]] = j;
+  }
   return uit;
+}
+
+// ---------- printen op de labelprinter ----------
+// Een printopdracht staat in dezelfde hash als de labels (veld `print:<id>`), zodat de bot
+// met één keer ophalen alles heeft. De bot haalt de pdf op, snijdt het label uit, schaalt
+// het naar het formaat van de labelprinter (Zebra ZD220, 100 × 150 mm) en print het.
+const PRINT = "print:";
+async function vraagPrint(orderId, labelId) {
+  if (!labelsAan()) throw new Error("Printen staat nog uit: de bot is niet gekoppeld");
+  if (!(await leesPdf(orderId, labelId))) throw new Error("Dit label is niet bewaard, dus het kan niet geprint worden");
+  const p = { id: crypto.randomUUID(), orderId, labelId, status: "wacht", tijd: new Date().toISOString() };
+  await kv("HSET", "crm:labels", PRINT + p.id, JSON.stringify(p));
+  await logboek(orderId, "DHL-label naar de labelprinter gestuurd");
+  return { id: p.id, status: p.status };
+}
+async function leesPrint(id) {
+  const p = leesJob(await kv("HGET", "crm:labels", PRINT + String(id)));
+  return p ? { id: p.id, status: p.status, fout: p.fout || "" } : null;
+}
+/** De bot meldt of het printen is gelukt. */
+async function meldPrint(invoer) {
+  const p = leesJob(await kv("HGET", "crm:labels", PRINT + String((invoer || {}).print)));
+  if (!p) { const e = new Error("Deze printopdracht bestaat niet meer"); e.status = 409; throw e; }
+  p.status = invoer.status === "klaar" ? "klaar" : "mislukt";
+  p.fout = p.status === "mislukt" ? String(invoer.fout || "onbekende fout").slice(0, 300) : "";
+  p.tijd = new Date().toISOString();
+  await kv("HSET", "crm:labels", PRINT + p.id, JSON.stringify(p));
+  await logboek(p.orderId, p.status === "klaar" ? "DHL-label geprint op de labelprinter" : "Printen mislukt: " + p.fout, { door: "bot" });
+  return { id: p.id, status: p.status, fout: p.fout };
 }
 
 /** Legt een labelopdracht klaar voor de bot. */
@@ -137,17 +169,23 @@ async function annuleer(orderId) {
  */
 async function voorBot() {
   const plat = (await kv("HGETALL", "crm:labels")) || [];
-  const opdrachten = [], wachtOpBetaling = [];
+  const opdrachten = [], wachtOpBetaling = [], printen = [];
   for (let i = 0; i < plat.length; i += 2) {
     const job = leesJob(plat[i + 1]);
     if (!job) continue;
+    if (plat[i].startsWith(PRINT)) {
+      // Printopdracht: één keer uitdelen; na een dag opruimen (wat er gebeurd is staat in het logboek).
+      if (job.status === "wacht") { job.status = "bezig"; await kv("HSET", "crm:labels", plat[i], JSON.stringify(job)); printen.push({ id: job.id, orderId: job.orderId, labelId: job.labelId }); }
+      else if (Date.now() - Date.parse(job.tijd || 0) > 24 * 60 * MIN) await kv("HDEL", "crm:labels", plat[i]);
+      continue;
+    }
     if (job.status === "wacht") {
       job.status = "bezig";
       await bewaar(job);
       opdrachten.push({ id: job.id, orderId: job.orderId, winkel: job.winkel, formaat: job.formaat, bezorging: job.bezorging, nietBijBuren: !!job.nietBijBuren, ontvanger: job.ontvanger });
     } else if (metVerloop(job).status === "betalen") wachtOpBetaling.push(job.id);
   }
-  return { opdrachten, wachtOpBetaling };
+  return { opdrachten, wachtOpBetaling, printen };
 }
 
 // ---------- het label als pdf ----------
@@ -236,4 +274,4 @@ async function meld(invoer) {
   return publiek(await bewaar(job));
 }
 
-module.exports = { FORMATEN, BEZORGING, LOPEND, labelsAan, isBot, splitsHuisnummer, ontvanger, metVerloop, publiek, alle, lees, vraagAan, annuleer, voorBot, meld, bewaarPdf, leesPdf, mailKlant };
+module.exports = { FORMATEN, BEZORGING, LOPEND, labelsAan, isBot, splitsHuisnummer, ontvanger, metVerloop, publiek, alle, lees, vraagAan, annuleer, voorBot, meld, bewaarPdf, leesPdf, mailKlant, vraagPrint, leesPrint, meldPrint };

@@ -197,6 +197,70 @@ async function haalLabel(sessie, order, naam) {
   return { code, bestand };
 }
 
+// ---------- printen op de labelprinter ----------
+const PDFJS = path.join(__dirname, "node_modules", "pdfjs-dist", "build");
+/**
+ * Maakt van de eerste pagina van de pdf een afbeelding van alleen het label: de witte
+ * randen eromheen worden weggesneden (DHL zet het label soms op een groter vel) en een
+ * liggend label wordt rechtop gezet. Het tekenen gebeurt in de browser van de bot.
+ */
+async function pdfNaarPng(browser, pdf) {
+  const ctx = await browser.newContext();
+  try {
+    const page = await ctx.newPage();
+    await page.route("http://bot.lokaal/**", (route) => {
+      const naam = new URL(route.request().url()).pathname.slice(1);
+      if (!naam) return route.fulfill({ contentType: "text/html", body: "<!doctype html><title>label</title>" });
+      if (naam === "label.pdf") return route.fulfill({ contentType: "application/pdf", body: pdf });
+      if (/^pdf(\.worker)?\.min\.mjs$/.test(naam)) return route.fulfill({ contentType: "text/javascript", body: fs.readFileSync(path.join(PDFJS, naam)) });
+      return route.fulfill({ status: 404, body: "" });
+    });
+    await page.goto("http://bot.lokaal/");
+    const url = await page.evaluate(async () => {
+      const pdfjs = await import("/pdf.min.mjs");
+      pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
+      const blad = await (await pdfjs.getDocument("/label.pdf").promise).getPage(1);
+      const vp = blad.getViewport({ scale: 4 }); // 288 punten per inch: ruim genoeg voor de 203 van de printer
+      const c = document.createElement("canvas");
+      c.width = Math.ceil(vp.width); c.height = Math.ceil(vp.height);
+      const g = c.getContext("2d", { willReadFrequently: true });
+      g.fillStyle = "#fff"; g.fillRect(0, 0, c.width, c.height);
+      await blad.render({ canvasContext: g, viewport: vp }).promise;
+      // Rand zoeken: de buitenste rijen en kolommen waar iets donkers staat.
+      const d = g.getImageData(0, 0, c.width, c.height).data;
+      let x0 = c.width, y0 = c.height, x1 = -1, y1 = -1;
+      for (let y = 0; y < c.height; y++) for (let x = 0; x < c.width; x++) {
+        const i = (y * c.width + x) * 4;
+        if (d[i] + d[i + 1] + d[i + 2] < 660) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+      }
+      if (x1 < 0) throw new Error("De pdf is leeg");
+      const b = x1 - x0 + 1, h = y1 - y0 + 1, liggend = b > h * 1.05;
+      const uit = document.createElement("canvas");
+      uit.width = liggend ? h : b; uit.height = liggend ? b : h;
+      const u = uit.getContext("2d");
+      u.fillStyle = "#fff"; u.fillRect(0, 0, uit.width, uit.height);
+      if (liggend) { u.translate(h, 0); u.rotate(Math.PI / 2); }
+      u.drawImage(c, x0, y0, b, h, 0, 0, b, h);
+      return uit.toDataURL("image/png");
+    });
+    return Buffer.from(url.split(",")[1], "base64");
+  } finally { await ctx.close().catch(() => {}); }
+}
+
+/** Print een label-pdf op de labelprinter uit de instellingen. Geeft de naam van de afbeelding terug. */
+async function printPdf(browser, cfg, pdf, naam) {
+  const printer = cfg.printer || "ZDesigner ZD220-203dpi ZPL";
+  fs.mkdirSync(MAP, { recursive: true });
+  const png = path.join(MAP, naam + "-print.png");
+  fs.writeFileSync(png, await pdfNaarPng(browser, pdf));
+  if (cfg.printAlleenBestand) return png; // voor een proef zonder papier
+  await new Promise((klaar, fout) => {
+    require("node:child_process").execFile("powershell.exe", ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", path.join(__dirname, "print.ps1"), "-Bestand", png, "-Printer", printer],
+      { timeout: 60000, windowsHide: true }, (e, uit, err) => (e ? fout(new Error(String(err || e.message).split("\n").find((r) => r.trim()) || "printen mislukt")) : klaar(uit)));
+  });
+  return png;
+}
+
 /** Wacht tot er betaald is en haalt dan de volgcode op. magDoor() = false stopt het wachten. */
 async function wachtOpBetaling(sessie, opdracht, magDoor) {
   const start = Date.now();
@@ -243,6 +307,16 @@ async function proef(browser, cfg) {
   const cfg = leesInstellingen();
   const browser = await chromium.launch({ headless: !cfg.zichtbaar });
   if (PROEF) { try { await proef(browser, cfg); } finally { await browser.close(); } return; }
+  // node bot.js --print <bestand.pdf> [--zonder-papier]: één pdf uitsnijden en printen, los van de CRM
+  const pi = process.argv.indexOf("--print");
+  if (pi > 0) {
+    try {
+      const bestand = process.argv[pi + 1];
+      if (process.argv.includes("--zonder-papier")) cfg.printAlleenBestand = true;
+      log("print:", await printPdf(browser, cfg, fs.readFileSync(bestand), path.basename(bestand, ".pdf")), cfg.printAlleenBestand ? "(alleen de afbeelding gemaakt)" : "(naar de printer gestuurd)");
+    } finally { await browser.close(); }
+    return;
+  }
 
   log("bot gestart, CRM:", cfg.crmUrl);
   let lopend = new Set();      // opdrachten die volgens de CRM nog op betaling wachten
@@ -253,6 +327,19 @@ async function proef(browser, cfg) {
     catch (e) { if (e.message !== crmFout) log("CRM niet bereikbaar:", e.message); crmFout = e.message; }
     if (werk) {
       lopend = new Set(werk.wachtOpBetaling || []);
+      // Printopdrachten uit de CRM: label ophalen, uitsnijden en naar de labelprinter.
+      for (const p of werk.printen || []) {
+        try {
+          const r = await fetch(cfg.crmUrl.replace(/\/$/, "") + "/api/label?pdf=" + encodeURIComponent(p.orderId) + "&label=" + encodeURIComponent(p.labelId), { headers: { Authorization: "Bearer " + cfg.sleutel }, signal: AbortSignal.timeout(20000) });
+          if (!r.ok) throw new Error("label ophalen gaf " + r.status);
+          await printPdf(browser, cfg, Buffer.from(await r.arrayBuffer()), String(p.orderId).replace(/[^\w-]/g, "_"));
+          log(p.orderId, "label geprint");
+          await crm(cfg, "PUT", { print: p.id, status: "klaar" });
+        } catch (e) {
+          log(p.orderId, "printen mislukt:", e.message);
+          await crm(cfg, "PUT", { print: p.id, status: "mislukt", fout: e.message }).catch(() => {});
+        }
+      }
       for (const opdracht of werk.opdrachten || []) {
         const afzender = (cfg.afzender && cfg.afzender[opdracht.winkel]) || cfg.afzender.standaard;
         log(opdracht.orderId, "label maken:", opdracht.formaat, opdracht.bezorging);

@@ -3,6 +3,7 @@
   "sleutel": "dezelfde waarde als LABEL_BOT_SLEUTEL in Vercel (minstens 24 tekens)",
   "zichtbaar": false,
   "interval": 8,
+  "printer": "ZDesigner ZD220-203dpi ZPL",
   "afzender": {
     "standaard": {
       "voornaam": "Voornaam",
