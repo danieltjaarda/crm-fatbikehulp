@@ -177,6 +177,26 @@ async function haalOrder(sessie) {
   return r.json();
 }
 
+const VOLGCODE = /\b(JVGL[0-9]{10,24}|JJD[0-9]{10,25}|3S[A-Z0-9]{9,15})\b/;
+
+/**
+ * Haalt het label (pdf) op en leest de volgcode eruit. Dat kan alleen in de
+ * browsersessie waarin het label is besteld. DHL geeft de volgcode nergens anders terug.
+ */
+async function haalLabel(sessie, order, naam) {
+  const stuk = Object.values(order.orderArtifacts || {}).find((a) => a && a.label && a.label.url);
+  if (!stuk) return { code: "" };
+  const xsrf = (await sessie.ctx.cookies(DHL)).find((c) => /xsrf/i.test(c.name));
+  const r = await sessie.ctx.request.get(stuk.label.url, { headers: xsrf ? { "X-XSRF-TOKEN": xsrf.value } : {} });
+  if (!r.ok()) throw new Error("DHL gaf " + r.status() + " bij het ophalen van het label");
+  const pdf = await r.body();
+  const bestand = path.join(MAP, naam + "-label.pdf");
+  fs.writeFileSync(bestand, pdf);
+  let code = "";
+  try { const m = VOLGCODE.exec((await require("pdf-parse")(pdf)).text.replace(/[ \t]/g, "")); if (m) code = m[1]; } catch (e) { log(naam, "label gelezen maar de volgcode niet gevonden:", e.message); }
+  return { code, bestand };
+}
+
 /** Wacht tot er betaald is en haalt dan de volgcode op. magDoor() = false stopt het wachten. */
 async function wachtOpBetaling(sessie, opdracht, magDoor) {
   const start = Date.now();
@@ -190,11 +210,19 @@ async function wachtOpBetaling(sessie, opdracht, magDoor) {
       if (/cancel|fail|refus|expir|error|declin/i.test(st.status || "")) return { status: "mislukt", fout: "De betaling is niet gelukt (" + st.status + ")" };
       continue;
     }
-    // Betaald. Het label wordt nu gemaakt: nog even doorvragen tot de volgcode er is.
-    let code = zoekVolgcode(order);
-    for (let i = 0; i < 24 && !code; i++) { await wacht(5000); try { order = (await haalOrder(sessie)) || order; code = zoekVolgcode(order); } catch (e) { /* volgende ronde */ } }
+    // Betaald. Het label staat als pdf klaar bij de order; daar staat de volgcode op.
+    const naam = String(opdracht.orderId).replace(/[^\w-]/g, "_");
     fs.mkdirSync(MAP, { recursive: true });
-    fs.writeFileSync(path.join(MAP, String(opdracht.orderId).replace(/[^\w-]/g, "_") + "-" + Date.now() + ".json"), JSON.stringify(order, null, 2));
+    let code = zoekVolgcode(order);
+    for (let i = 0; i < 12; i++) {
+      try {
+        const label = await haalLabel(sessie, order, naam);
+        if (label.bestand) { log(opdracht.orderId, "label bewaard:", label.bestand); code = code || label.code; break; }
+      } catch (e) { log(opdracht.orderId, "label ophalen lukte even niet:", e.message); }
+      await wacht(5000);
+      try { order = (await haalOrder(sessie)) || order; } catch (e) { /* volgende ronde */ }
+    }
+    fs.writeFileSync(path.join(MAP, naam + "-" + Date.now() + ".json"), JSON.stringify(order, null, 2));
     return { status: "klaar", trackTrace: code };
   }
   return { status: "verlopen" };
