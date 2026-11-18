@@ -177,7 +177,16 @@ async function haalOrder(sessie) {
   return r.json();
 }
 
-const VOLGCODE = /\b(JVGL[0-9]{10,24}|JJD[0-9]{10,25}|3S[A-Z0-9]{9,15})\b/;
+/**
+ * De volgcode uit de tekst van het label. Op een DHL-label staat hij als losse regel onder de
+ * streepjescode, bv. 3SDFC2109374617. Eerst zoeken naar een regel die precies een code is;
+ * anders in alle tekst aan elkaar (voor als de pdf de code in stukjes opslaat).
+ */
+function volgcodeUit(regels) {
+  for (const r of regels) { const m = /^(JVGL[0-9]{10,24}|JJD[0-9]{10,25}|3S[A-Z0-9]{9,15})$/.exec(String(r).replace(/\s+/g, "")); if (m) return m[1]; }
+  const m = /(JVGL[0-9]{10,24}|JJD[0-9]{10,25}|3S[A-Z]{2,5}[0-9]{8,12})/.exec(regels.join("").replace(/\s+/g, ""));
+  return m ? m[1] : "";
+}
 
 /**
  * Haalt het label (pdf) op en leest de volgcode eruit. Dat kan alleen in de
@@ -193,18 +202,20 @@ async function haalLabel(sessie, order, naam) {
   const bestand = path.join(MAP, naam + "-label.pdf");
   fs.writeFileSync(bestand, pdf);
   let code = "";
-  try { const m = VOLGCODE.exec((await require("pdf-parse")(pdf)).text.replace(/[ \t]/g, "")); if (m) code = m[1]; } catch (e) { log(naam, "label gelezen maar de volgcode niet gevonden:", e.message); }
+  try { code = volgcodeUit((await leesPdf(sessie.ctx.browser(), pdf, false)).tekst); if (!code) log(naam, "label gelezen, maar er staat geen herkenbare volgcode in"); }
+  catch (e) { log(naam, "de tekst van het label kon niet worden gelezen:", e.message); }
   return { code, bestand };
 }
 
 // ---------- printen op de labelprinter ----------
 const PDFJS = path.join(__dirname, "node_modules", "pdfjs-dist", "build");
 /**
- * Maakt van de eerste pagina van de pdf een afbeelding van alleen het label: de witte
- * randen eromheen worden weggesneden (DHL zet het label soms op een groter vel) en een
- * liggend label wordt rechtop gezet. Het tekenen gebeurt in de browser van de bot.
+ * Opent de pdf in de browser van de bot (met pdf.js) en geeft de tekst van de eerste pagina
+ * terug. Met metBeeld ook een afbeelding van alleen het label: de witte randen eromheen
+ * worden weggesneden (voor als het label op een groter vel staat) en een liggend label wordt
+ * rechtop gezet.
  */
-async function pdfNaarPng(browser, pdf) {
+async function leesPdf(browser, pdf, metBeeld) {
   const ctx = await browser.newContext();
   try {
     const page = await ctx.newPage();
@@ -216,10 +227,12 @@ async function pdfNaarPng(browser, pdf) {
       return route.fulfill({ status: 404, body: "" });
     });
     await page.goto("http://bot.lokaal/");
-    const url = await page.evaluate(async () => {
+    const uit = await page.evaluate(async (metBeeld) => {
       const pdfjs = await import("/pdf.min.mjs");
       pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
       const blad = await (await pdfjs.getDocument("/label.pdf").promise).getPage(1);
+      const tekst = (await blad.getTextContent()).items.map((i) => i.str).filter((s) => s && s.trim());
+      if (!metBeeld) return { tekst, png: "" };
       const vp = blad.getViewport({ scale: 4 }); // 288 punten per inch: ruim genoeg voor de 203 van de printer
       const c = document.createElement("canvas");
       c.width = Math.ceil(vp.width); c.height = Math.ceil(vp.height);
@@ -235,15 +248,15 @@ async function pdfNaarPng(browser, pdf) {
       }
       if (x1 < 0) throw new Error("De pdf is leeg");
       const b = x1 - x0 + 1, h = y1 - y0 + 1, liggend = b > h * 1.05;
-      const uit = document.createElement("canvas");
-      uit.width = liggend ? h : b; uit.height = liggend ? b : h;
-      const u = uit.getContext("2d");
-      u.fillStyle = "#fff"; u.fillRect(0, 0, uit.width, uit.height);
+      const label = document.createElement("canvas");
+      label.width = liggend ? h : b; label.height = liggend ? b : h;
+      const u = label.getContext("2d");
+      u.fillStyle = "#fff"; u.fillRect(0, 0, label.width, label.height);
       if (liggend) { u.translate(h, 0); u.rotate(Math.PI / 2); }
       u.drawImage(c, x0, y0, b, h, 0, 0, b, h);
-      return uit.toDataURL("image/png");
-    });
-    return Buffer.from(url.split(",")[1], "base64");
+      return { tekst, png: label.toDataURL("image/png") };
+    }, !!metBeeld);
+    return { tekst: uit.tekst, png: uit.png ? Buffer.from(uit.png.split(",")[1], "base64") : null };
   } finally { await ctx.close().catch(() => {}); }
 }
 
@@ -252,8 +265,9 @@ async function printPdf(browser, cfg, pdf, naam) {
   const printer = cfg.printer || "ZDesigner ZD220-203dpi ZPL";
   fs.mkdirSync(MAP, { recursive: true });
   const png = path.join(MAP, naam + "-print.png");
-  fs.writeFileSync(png, await pdfNaarPng(browser, pdf));
-  if (cfg.printAlleenBestand) return png; // voor een proef zonder papier
+  const gelezen = await leesPdf(browser, pdf, true);
+  fs.writeFileSync(png, gelezen.png);
+  if (cfg.printAlleenBestand) { log("volgcode in deze pdf:", volgcodeUit(gelezen.tekst) || "niet gevonden"); return png; } // proef zonder papier
   await new Promise((klaar, fout) => {
     require("node:child_process").execFile("powershell.exe", ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", path.join(__dirname, "print.ps1"), "-Bestand", png, "-Printer", printer],
       { timeout: 60000, windowsHide: true }, (e, uit, err) => (e ? fout(new Error(String(err || e.message).split("\n").find((r) => r.trim()) || "printen mislukt")) : klaar(uit)));

@@ -3,6 +3,10 @@
 Bestellingen van fatbikehulp.nl en deskna.nl bekijken, bewerken en klanten mailen.
 Live: https://fatbikehulp-crm.vercel.app (Vercel-project `fatbikehulp-crm`, team fixclan-bv).
 
+- Indeling: menu links met Overzicht (te verzenden, omzet, grafiek per dag, meest verkocht, per winkel), Bestellingen,
+  Verzendingen (DHL-labels) en Klanten; bovenaan zoeken (toets `/`) en de winkelkeuze in het menu. De pagina staat in het
+  adres (`#/bestellingen`), een open bestelling erachter (`#/bestellingen/<order>`), dus de terugknop en directe links werken.
+  Alles zit in één bestand, `public/index.html`, zonder bouwstap.
 - Bestellingen worden alleen gelezen uit de opslag van de site (sleutel `orders`). De CRM schrijft daar nooit in.
 - Deskna: de opslag van de Deskna-webshop (`upstash-kv-rose-car-deskna`) is gekoppeld met voorvoegsel `DESKNA`.
   De CRM leest daar de sleutels `order:<id>` met het alleen-lezen-token (`DESKNA_KV_REST_API_READ_ONLY_TOKEN`).
